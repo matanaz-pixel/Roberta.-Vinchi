@@ -381,11 +381,13 @@ function newId(){
 }
 
 // ============ ניווט ============
+const safeDecode = x => { try{ return decodeURIComponent(x); }catch(e){ return x; } };
+const validDateKey = k => { try{ return typeof k === 'string' && SK.addDays(k, 0) === k && k >= '2020-01-01' && k <= '2099-12-31'; }catch(e){ return false; } };
 function go(h){ if(location.hash === h) route(); else location.hash = h; }
 window.addEventListener('hashchange', route);
 function route(){
   if(!started || !SK) return;
-  const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
+  const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(safeDecode);
   const view = $('view');
   const [name, a, b, c] = parts;
   const valid = k => SK.STATIONS.some(s => s.key === k);
@@ -447,7 +449,7 @@ function viewHome(){
     else if(d.error) sub = 'ההגדרות בגיליון לא תקינות';
     else if(!n) sub = 'אין מוצרים לספירה ביום ' + SK.DAYS[curDay()];
     else if(act) sub = `נספר ב-${hhmm(act.t)} על ידי ${act.by} · ${list.prep.length} להכין` + (list.uncounted.length ? ` · ${list.uncounted.length} לא נספרו` : '');
-    else sub = `עדיין לא נספר היום · ${n} מוצרים`;
+    else sub = `עדיין לא נספר היום · ${n === 1 ? 'מוצר אחד' : n + ' מוצרים'}`;
     b.append(el('p', '', sub));
     b.onclick = () => go(act ? '#/prep/' + s.key : '#/count/' + s.key);
     wrap.append(b);
@@ -479,6 +481,7 @@ function viewCount(st){
   nameIn.addEventListener('input', () => { typedName = nameIn.value; });
   const nameField = el('div', 'field'); const nl = el('label', '', 'השם שלך'); nl.htmlFor = 'sender-in'; nameField.append(nl, nameIn);
   out.push(nameField);
+  const prevC = SK.latestCount(countsFor(today, st)); const prevItems = prevC ? prevC.items : {};
   const rows = el('div', 'rows');
   const save = el('button', 'btn primary', 'שמור ספירה והצג הכנות'); save.type = 'button';
   const rowEls = {};
@@ -493,6 +496,7 @@ function viewCount(st){
     const row = el('div', 'row'); rowEls[key] = row;
     const l1 = el('div', 'l1'); l1.append(el('span', 'nm', p.name), el('span', 'base', `בסיס ${SK.fmtQty(SK.baseFor(p, day))} ${p.unit || ''}`.trim()));
     const inp = el('input'); inp.type = 'text'; inp.inputMode = 'decimal'; inp.autocomplete = 'off'; inp.value = vals[key] ?? '';
+    { const pv = prevItems[key]; inp.placeholder = typeof pv === 'number' ? 'קודם ' + SK.fmtQty(pv) : '—'; }   // רמז בלבד, לא ערך: אי אפשר לשמור בטעות ספירה ישנה
     inp.setAttribute('aria-label', `כמה יש: ${p.name}${p.unit ? ' (' + p.unit + ')' : ''}`);
     const cur = () => { const n = parseNum(inp.value); return n; };
     const set = v => { inp.value = v; vals[key] = v; row.classList.remove('bad'); saveDraft(); refresh(); };
@@ -501,7 +505,7 @@ function viewCount(st){
     const plus = el('button', 'step', '+'); plus.type = 'button'; plus.setAttribute('aria-label', 'הוסף ' + p.name);
     minus.onclick = () => { const n = cur(); set(isNaN(n) ? '0' : SK.fmtQty(Math.max(0, Math.round((n - 1) * 100) / 100))); };
     plus.onclick = () => { const n = cur(); set(isNaN(n) ? '1' : SK.fmtQty(Math.round((n + 1) * 100) / 100)); };
-    const clr = el('button', 'clr', 'לא נספר'); clr.type = 'button'; clr.setAttribute('aria-label', 'סמן כלא נספר: ' + p.name); clr.onclick = () => set('');
+    const clr = el('button', 'clr', 'ניקוי'); clr.type = 'button'; clr.setAttribute('aria-label', 'סמן כלא נספר: ' + p.name); clr.onclick = () => set('');
     const l2 = el('div', 'l2'); l2.append(minus, inp, plus, clr);
     row.append(l1, l2); rows.append(row);
   }
@@ -537,6 +541,7 @@ function viewCount(st){
 // ============ רשימת הכנות ============
 function viewPrep(st, date, id){
   const specific = !!(date && id);
+  if(specific && !validDateKey(date)) return [topBar(stationName(st), 'ספירה לא נמצאה', '#/history'), el('div', 'empty', 'הקישור לא תקין.')];
   const d = specific ? date : today;
   loadHist(d);
   const counts = countsFor(d, st);
