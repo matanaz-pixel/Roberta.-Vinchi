@@ -199,3 +199,82 @@ test('honeypot field silently ignores a device request', () => {
   assert.strictEqual(env.post({ a: 'request', dev: ID, name: 'בוט', website: 'http://spam' }), 'ok');
   assert.strictEqual(env.devices(), undefined);
 });
+
+// ---- מלאי (a=stock) ----
+const STOCK_TABS = { cold: 'מלאי-פס קר', hot: 'מלאי-פס חם', tabun: 'מלאי-טאבון' };
+function withStock(env){
+  env.sheets[STOCK_TABS.cold] = new Sheet([['מוצר', 'יחידה', 'ראשון'], ['סחוג', 'ליטר', 3]]);
+  env.sheets[STOCK_TABS.hot] = new Sheet([['מוצר', 'יחידה', 'ראשון'], ['קרם, כרובית', 'ליטר', 6]]);   // פסיק: חייב ציטוט
+  return env;                                                                                          // טאבון חסר בכוונה
+}
+test('stock: unknown device gets no data', () => {
+  const env = withStock(makeEnv());
+  assert.deepStrictEqual(env.j(env.get({ a: 'stock', d: ID })), { status: 'unknown' });
+  assert.deepStrictEqual(env.j(env.get({ a: 'stock' })), { status: 'unknown' });
+});
+test('stock: pending and blocked devices get status only, nothing from the stock tabs', () => {
+  const env = withStock(makeEnv());
+  env.post({ a: 'request', dev: ID, name: 'דני' });
+  let g = env.j(env.get({ a: 'stock', d: ID }));
+  assert.strictEqual(g.status, 'pending');
+  assert.strictEqual(g.stations, undefined);
+  assert.ok(!JSON.stringify(g).includes('סחוג'));
+  env.approveAll(); env.get({ a: 'data', d: ID });                        // נראה
+  env.devices().rows[1][3] = false;
+  g = env.j(env.get({ a: 'stock', d: ID }));
+  assert.strictEqual(g.status, 'blocked');
+  assert.ok(!JSON.stringify(g).includes('סחוג'));
+});
+test('stock: approved device gets the three stations as CSV, missing tab is empty', () => {
+  const env = withStock(approved());
+  const g = env.j(env.get({ a: 'stock', d: ID }));
+  assert.strictEqual(g.status, 'ok');
+  assert.deepStrictEqual(Object.keys(g.stations).sort(), ['cold', 'hot', 'tabun']);
+  assert.strictEqual(g.stations.cold, 'מוצר,יחידה,ראשון\nסחוג,ליטר,3');
+  assert.strictEqual(g.stations.hot, 'מוצר,יחידה,ראשון\n"קרם, כרובית",ליטר,6');
+  assert.strictEqual(g.stations.tabun, '');
+  assert.strictEqual(g.csv, undefined);                                    // לא מערבבים עם נתוני המתכונים
+  assert.strictEqual(g.errors, undefined);                                 // בלי שגיאות, אין שדה errors
+});
+test('stock: tabs of the recipe book are never returned through a=stock', () => {
+  const env = withStock(approved());
+  const g = env.j(env.get({ a: 'stock', d: ID }));
+  assert.ok(!JSON.stringify(g).includes('עגבניות'));
+});
+test('stock: bad ids and injection-looking ids are just unknown, no crash', () => {
+  const env = withStock(approved());
+  for(const bad of ['', 'x', ID.toUpperCase(), ID + 'a', "' OR 1", '../' + ID, null, undefined, 5, { a: 1 }]){
+    assert.deepStrictEqual(env.j(env.get({ a: 'stock', d: bad })), { status: 'unknown' }, String(bad));
+  }
+});
+test('stock: other action names do not leak stock data', () => {
+  const env = withStock(approved());
+  for(const a of ['Stock', 'stock ', 'stocks', '']) assert.strictEqual(env.get({ a, d: ID }), 'ok');
+});
+test('stock: approved read updates "seen" once per hour like data', () => {
+  const env = withStock(approved());
+  env.get({ a: 'stock', d: ID });
+  const first = env.devices().rows[1][4];
+  assert.ok(first instanceof Date);
+  env.devices().rows[1][4] = 'x';
+  env.get({ a: 'stock', d: ID });
+  assert.strictEqual(env.devices().rows[1][4], 'x');
+});
+test('stock: an oversized tab is withheld with an explicit error instead of a broken partial CSV', () => {
+  const env = withStock(approved());
+  env.sheets[STOCK_TABS.tabun] = new Sheet([['מוצר'], ['x'.repeat(400000)]]);
+  const g = env.j(env.get({ a: 'stock', d: ID }));
+  assert.strictEqual(g.status, 'ok');
+  assert.strictEqual(g.stations.tabun, '');
+  assert.deepStrictEqual(g.errors, { tabun: 'too_big' });
+  assert.ok(g.stations.cold.startsWith('מוצר'));                           // שאר הפסים לא נפגעים
+});
+test('stock: a sheet error in one tab does not break the others', () => {
+  const env = withStock(approved());
+  env.sheets[STOCK_TABS.hot].getDataRange = () => { throw new Error('boom'); };
+  const g = env.j(env.get({ a: 'stock', d: ID }));
+  assert.strictEqual(g.status, 'ok');
+  assert.strictEqual(g.stations.hot, '');
+  assert.deepStrictEqual(g.errors, { hot: 'read_failed' });
+  assert.ok(g.stations.cold);
+});

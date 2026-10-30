@@ -38,12 +38,15 @@ const DEV_HEADERS = ['זמן בקשה', 'שם', 'קוד', 'מאושר', 'נרא�
 const DEV_APPROVED = 4, DEV_SEEN = 5, DEV_HASH = 6;
 const DEV_REQ_GLOBAL = 20;        // בקשות גישה חדשות לכל 10 דקות, לכולם יחד
 const DEV_PENDING_MAX = 100;      // תקרה לבקשות שלא אושרו. מעבר לזה נדחות עד שמנקים את הטאב
+const STOCK_TABS = { cold: 'מלאי-פס קר', hot: 'מלאי-פס חם', tabun: 'מלאי-טאבון' };   // טאב לכל פס (אפליקציית המלאי)
+const STOCK_MAX_CSV = 300000;     // תקרת גודל לטאב מלאי. מעבר לזה הטאב לא נשלח (חותכים ושולחים CSV שבור זה גרוע יותר)
 const SEEN_EVERY_S = 3600;        // "נראה לאחרונה" מתעדכן לכל היותר פעם בשעה למכשיר
 
 function doGet(e) {
   try {
     const p = (e && e.parameter) || {};
     if (p.a === 'data') return handleData(p.d);
+    if (p.a === 'stock') return handleStock(p.d);
   } catch (err) {
     return reply('error');
   }
@@ -133,20 +136,44 @@ function devStatus(dev) {
   return { status: dev.approved ? 'ok' : (dev.seen ? 'blocked' : 'pending'), name: dev.name, code: devCode(dev.key) };
 }
 
-/** doGet?a=data&d=<מזהה>: מחזיר את המתכונים רק למכשיר מאושר. */
-function handleData(id) {
+/** בדיקת מכשיר משותפת לכל פעולות הקריאה. מחזיר {st} לתשובה מיידית (לא מאושר), או {st, dev} למכשיר מאושר. מעדכן "נראה לאחרונה". */
+function approvedDevice(id) {
   const dev = lookupDevice(id);
-  if (!dev) return json({ status: 'unknown' });
+  if (!dev) return { st: { status: 'unknown' } };
   const st = devStatus(dev);
-  if (st.status !== 'ok') return json(st);
+  if (st.status !== 'ok') return { st };
   const cache = CacheService.getScriptCache();
   if (!cache.get('seen-' + dev.key)) {
     cache.put('seen-' + dev.key, '1', SEEN_EVERY_S);
     dev.sh.getRange(dev.row, DEV_SEEN).setValue(new Date());
   }
-  st.csv = sheetCsv(RECIPES_SHEET);
-  st.extra = sheetCsv(EXTRA_SHEET);
-  return json(st);
+  return { st, dev };
+}
+
+/** doGet?a=data&d=<מזהה>: מחזיר את המתכונים רק למכשיר מאושר. */
+function handleData(id) {
+  const r = approvedDevice(id);
+  if (!r.dev) return json(r.st);
+  r.st.csv = sheetCsv(RECIPES_SHEET);
+  r.st.extra = sheetCsv(EXTRA_SHEET);
+  return json(r.st);
+}
+
+/** doGet?a=stock&d=<מזהה>: הגדרות המלאי של שלושת הפסים (CSV לכל פס) למכשיר מאושר. טאב חסר או שבור = מחרוזת ריקה, ו-errors מסביר. */
+function handleStock(id) {
+  const r = approvedDevice(id);
+  if (!r.dev) return json(r.st);
+  r.st.stations = {};
+  Object.keys(STOCK_TABS).forEach(k => {
+    try {
+      const csv = sheetCsv(STOCK_TABS[k]);
+      if (csv.length > STOCK_MAX_CSV) { r.st.stations[k] = ''; (r.st.errors = r.st.errors || {})[k] = 'too_big'; }
+      else r.st.stations[k] = csv;
+    } catch (err) {
+      r.st.stations[k] = ''; (r.st.errors = r.st.errors || {})[k] = 'read_failed';
+    }
+  });
+  return json(r.st);
 }
 
 /** doPost {a:'request', dev, name}: בקשת גישה של מכשיר חדש. מכשיר שכבר קיים לא מקבל שורה נוספת. */

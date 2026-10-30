@@ -1170,6 +1170,18 @@ window.addEventListener('scroll', () => { toTop.hidden = window.scrollY < 600; }
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
   window.addEventListener('load', () => navigator.serviceWorker.register('./recipes-sw.js', { scope: './recipes.html' }).catch(() => {}));
 }
+// קישור עמוק מאפליקציית המלאי: recipes.html#q=שם מתכון. ממלא את החיפוש ומציג את כל הקטגוריות.
+function applyHashQuery(){
+  try{
+    const m = location.hash.match(/^#q=(.*)$/);
+    if(!m) return;
+    document.getElementById('search').value = decodeURIComponent(m[1]).slice(0, 80);
+    activeTab = 'הכל'; state.tab = 'הכל';
+    if(recipes.length){ buildTabs(); render(); renderRecent(); }
+  }catch(e){}
+}
+applyHashQuery();
+window.addEventListener('hashchange', applyHashQuery);
 load();
 </script>
 </body>
