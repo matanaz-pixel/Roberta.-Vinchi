@@ -98,6 +98,19 @@
   .mini{ display:flex; justify-content:space-between; gap:8px; padding:10px 4px; border-bottom:1px dashed var(--line); font-size:16px; }
   .empty{ text-align:center; color:var(--text-dim); font-size:15px; padding:26px 10px; border:1px dashed var(--line); border-radius:16px; }
 
+  .adm{ background:var(--card); border:1px solid var(--line); border-radius:14px; margin-bottom:6px; }
+  .adm summary{ display:flex; justify-content:space-between; gap:8px; align-items:center; min-height:56px; padding:8px 14px; cursor:pointer; list-style:none; }
+  .adm summary::-webkit-details-marker{ display:none; }
+  .adm .nm{ font-size:18px; font-weight:500; }
+  .adm .qs{ text-align:left; font-size:15px; font-variant-numeric:tabular-nums; }
+  .adm .qs b{ font-size:20px; color:var(--accent); }
+  .adm .body{ padding:0 14px 12px; font-size:15px; }
+  .adm .tot{ color:var(--text-dim); margin-bottom:6px; }
+  .adm .dl{ display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed var(--line); font-variant-numeric:tabular-nums; }
+  .adm .dl.short{ color:var(--accent); font-weight:600; }
+  .adm .cv{ margin-top:8px; font-weight:600; color:var(--green); }
+  .adm-date{ display:flex; gap:8px; align-items:center; margin:8px 0 4px; flex-wrap:wrap; }
+  .adm-date input{ height:48px; border:1.5px solid var(--line); border-radius:14px; padding:0 12px; font-size:16px; background:#fff; color:var(--text); }
   .hday{ margin:16px 0 6px; font-size:17px; font-weight:600; }
   .hst{ margin:0 0 8px; }
   .hst .t{ font-size:14px; color:var(--text-dim); margin:6px 2px; }
@@ -140,7 +153,7 @@
 const ACCESS_URL = 'https://script.google.com/macros/s/AKfycbyT2q5HDJJ77nzPrpd-FayB1Mq5piCG6kLpP9Kx1zq-h4dbEYZPtgNK5JYG4WXv9xSj/exec';
 const DEVICE_KEY = 'rb-device-v1', SENDER_KEY = 'rb-sender', PREP_KEY = 'rb-prep-v1';
 function prepVals(){ const d = store.get(PREP_KEY); return d && typeof d === 'object' ? d : {}; }
-const DEFS_KEY = 'sk-defs-v1', DRAFT_KEY = 'sk-draft-v1', OUTBOX_KEY = 'sk-outbox-v1';
+const DEFS_KEY = 'sk-defs-v1', DRAFT_KEY = 'sk-draft-v1', OUTBOX_KEY = 'sk-outbox-v1', PREPOUT_KEY = 'sk-prepout-v1';
 const DRAFT_MAX_AGE = 2 * 24 * 3600e3;
 const SK = window.SK || null;
 const $ = id => document.getElementById(id);
@@ -170,6 +183,7 @@ let histDays = 7;
 let flags = { rejected: false, defsOld: false };
 let typedName = '';
 const bootAt = Date.now();
+let isAdmin = false;           // מגיע מהשרת (עמודת "תפקיד"), נשמר עם ההגדרות. הנתונים עצמם פתוחים בכל מקרה: זו רק תצוגה
 let started = false, unsub = null, gateStatus = '', gateTimer = 0, saving = false, flushing = false;
 const curDay = () => userDay == null ? SK.dayIdx(nowDate()) : userDay;
 const stationName = k => (SK.STATIONS.find(s => s.key === k) || {}).name || k;
@@ -207,7 +221,7 @@ const GATE_ERRORS = { network: 'אין חיבור לאינטרנט. נסו שו�
 
 function hideGate(){ clearInterval(gateTimer); gateTimer = 0; gateStatus = ''; document.body.classList.remove('locked'); $('gate').hidden = true; }
 function lockOut(acc){
-  store.del(DEFS_KEY);
+  store.del(DEFS_KEY); isAdmin = false;
   defs = {}; live = {}; histCache = {};
   if(unsub){ unsub(); unsub = null; }
   $('view').replaceChildren();
@@ -278,12 +292,13 @@ async function boot(){
   if(!id){ showGate({ status: 'nostorage' }); return; }
   let cache = store.get(DEFS_KEY);
   if(cache && !RB.cacheValid(cache.ts, Date.now())) cache = null;
-  if(cache && !started){ applyDefs(cache.stations); start(); }
+  if(cache && !started){ isAdmin = cache.admin === true; applyDefs(cache.stations); start(); }
   const { acc, text } = await fetchStock();
   if(acc && acc.status !== 'ok'){ lockOut(acc); return; }
   if(acc){
     flags.defsOld = false;
-    store.set(DEFS_KEY, { ts: Date.now(), stations: acc.stations || {} });
+    isAdmin = acc.admin === true;
+    store.set(DEFS_KEY, { ts: Date.now(), stations: acc.stations || {}, admin: isAdmin });
     applyDefs(acc.stations || {});
     if(!started) start(); else route();
     renderBanners();
@@ -355,7 +370,21 @@ async function flush(){
         if(!exists) flags.rejected = true;
       }
     }
+    await flushPrep();
   }finally{ flushing = false; renderBanners(); route(); }
+}
+// החלטת ההכנה של הטבח (כמה להכין) נשלחת ל-Firebase כשהוא לוחץ על הוואטסאפ. נכשל = נשמר במכשיר ונשלח שוב מאוחר יותר.
+function prepOut(){ const o = store.get(PREPOUT_KEY); return Array.isArray(o) ? o : []; }
+function queuePrep(e){
+  const k = x => [x.date, x.station, x.id].join('|');
+  store.set(PREPOUT_KEY, [...prepOut().filter(x => k(x) !== k(e) && Date.now() - x.rec.t < 2 * 864e5), e]);
+}
+async function flushPrep(){
+  if(!fbReady) return;
+  for(const e of prepOut()){
+    try{ await db.ref(`stockPrep/${e.date}/${e.station}/${e.id}`).set(e.rec); store.set(PREPOUT_KEY, prepOut().filter(x => !(x.date === e.date && x.station === e.station && x.id === e.id && x.rec.t === e.rec.t))); }
+    catch(err){ /* ייתכן שהספירה עצמה עדיין לא הגיעה לשרת. ננסה שוב בפעם הבאה */ }
+  }
 }
 
 // ============ באנרים ============
@@ -402,10 +431,13 @@ function route(){
   const valid = k => SK.STATIONS.some(s => s.key === k);
   // לא מרנדרים מחדש מסך ספירה בזמן שהמשתמש מקליד (עדכון חי מ-Firebase יאבד פוקוס)
   if(name === 'count' && valid(a) && view.dataset.v === 'count:' + a && view.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
+  if(name === 'prep' && valid(a) && view.dataset.v === 'prep:' + [a, b, c].join('/') && view.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
+  if(name !== 'admin') stopPrepWatch();
   const keep = view.dataset.v;
   let node, key;
   if(name === 'count' && valid(a)){ node = viewCount(a); key = 'count:' + a; }
   else if(name === 'prep' && valid(a)){ node = viewPrep(a, b, c); key = 'prep:' + [a, b, c].join('/'); }
+  else if(name === 'admin' && isAdmin){ node = viewAdmin(a); key = 'admin:' + (a || ''); }
   else if(name === 'history'){ node = viewHistory(); key = 'history'; }
   else { node = viewHome(); key = 'home'; }
   view.dataset.v = key;
@@ -466,6 +498,7 @@ function viewHome(){
   out.push(wrap);
   const h = el('button', 'link', 'היסטוריה ודוח'); h.type = 'button'; h.onclick = () => go('#/history');
   out.push(h);
+  if(isAdmin){ const a = el('button', 'link', 'מנהל: מה הפסים הזינו'); a.type = 'button'; a.onclick = () => go('#/admin'); out.push(a); }
   return out;
 }
 
@@ -621,8 +654,103 @@ function viewPrep(st, date, id){
   const acts = el('div', 'actions');
   if(!specific){ const n = el('button', 'btn', 'ספירה חדשה'); n.type = 'button'; n.onclick = () => go('#/count/' + st); acts.append(n); }
   updateWa();
+  wa.addEventListener('click', () => {
+    const items = {};
+    for(const it of list.prep) items[SK.sanitizeKey(it.name)] = chosen[it.name];
+    for(const it of list.enough) items[SK.sanitizeKey(it.name)] = 0;
+    if(!Object.keys(items).length) return;
+    queuePrep({ date: d, station: st, id: c.id, rec: { t: Date.now() + clockOffset, by: String(c.by).slice(0, 40), day, items } });
+    flush();
+  });
   wa.target = '_blank'; wa.rel = 'noopener'; acts.append(wa);
   out.push(acts);
+  return out;
+}
+
+// ============ מנהל: מה הפסים הזינו (קריאה בלבד) ============
+let prepWatch = { date: '', off: null, data: null };
+function normPrep(v){
+  const out = {};
+  for(const s of SK.STATIONS){
+    out[s.key] = {};
+    const o = v && typeof v === 'object' ? v[s.key] : null;
+    if(!o || typeof o !== 'object') continue;
+    for(const [id, r] of Object.entries(o)){
+      if(!r || typeof r !== 'object' || typeof r.t !== 'number' || !Number.isInteger(r.day) || r.day < 0 || r.day > 6 || !r.items || typeof r.items !== 'object') continue;
+      const items = {}; for(const [k, x] of Object.entries(r.items)) if(typeof x === 'number' && isFinite(x) && x >= 0) items[k] = x;
+      out[s.key][id] = { t: r.t, by: String(r.by || '').slice(0, 40), day: r.day, items };
+    }
+  }
+  return out;
+}
+function stopPrepWatch(){ if(prepWatch.off) prepWatch.off(); prepWatch = { date: '', off: null, data: null }; }
+function watchPrep(date){
+  if(prepWatch.date === date) return;
+  stopPrepWatch(); prepWatch.date = date;
+  if(!fbReady){ prepWatch.data = normPrep(null); return; }
+  const ref = db.ref('stockPrep/' + date);
+  const cb = snap => { if(prepWatch.date === date){ prepWatch.data = normPrep(snap.val()); route(); } };
+  ref.on('value', cb, () => { if(prepWatch.date === date){ prepWatch.data = normPrep(null); route(); } });
+  prepWatch.off = () => ref.off('value', cb);
+}
+function viewAdmin(dateArg){
+  const date = dateArg && validDateKey(dateArg) ? dateArg : today;
+  const out = [topBar('מנהל', 'מה כל פס ספר והחליט להכין. לקריאה בלבד.', '#/')];
+  const bar = el('div', 'adm-date');
+  const inp = el('input'); inp.type = 'date'; inp.value = date; inp.max = today; inp.setAttribute('aria-label', 'תאריך');
+  inp.onchange = () => { if(inp.value && validDateKey(inp.value)) go('#/admin/' + inp.value); };
+  const chip = (label, k) => { const b = el('button', 'chip', label); b.type = 'button'; b.setAttribute('aria-pressed', String(date === k)); b.onclick = () => go('#/admin/' + k); return b; };
+  bar.append(chip('היום', today), chip('אתמול', SK.addDays(today, -1)), inp);
+  out.push(bar, el('div', 'hday', fmtDate(date)));
+  loadHist(date); watchPrep(date);
+  if((date !== today && histCache[date] === null) || prepWatch.data === null){ out.push(el('div', 'dim', 'טוען...')); return out; }
+  const unitOf = u => u ? ' ' + u : '';
+  for(const s of SK.STATIONS){
+    const sec = el('section'); sec.append(el('div', 'grp', s.name));
+    const counts = countsFor(date, s.key), act = SK.latestCount(counts);
+    if(!act){ sec.append(el('div', 'dim', 'לא נספר ביום הזה')); out.push(sec); continue; }
+    const rec = (prepWatch.data[s.key] || {})[act.id];
+    const nOld = Object.keys(counts).length - 1;
+    sec.append(el('div', 'dim', `נספר ב-${hhmm(act.t)} על ידי ${act.by}` + (rec ? ` · החלטת הכנה נשלחה ב-${hhmm(rec.t)}` : ' · הטבח עוד לא שלח החלטת הכנה') + (nOld > 0 ? ` · עוד ${nOld} ספירות קודמות באותו יום` : '')));
+    const day = rec ? rec.day : dayOfDateKey(date);
+    const prods = (defs[s.key] && defs[s.key].products) || [];
+    const list = SK.prepList(prods, act.items, day);
+    const byName = Object.create(null); for(const p of prods) byName[p.name] = p;
+    const all = [...list.prep.map(x => ({ ...x, need: x.need })), ...list.enough.map(x => ({ ...x, need: 0 })), ...list.uncounted.map(x => ({ ...x, have: undefined }))];
+    if(!all.length) sec.append(el('div', 'dim', 'אין מוצרים לספירה ביום הזה'));
+    for(const it of all){
+      const key = SK.sanitizeKey(it.name), p = byName[it.name];
+      const counted = typeof it.have === 'number';
+      const decided = rec && typeof rec.items[key] === 'number';
+      const prep = decided ? rec.items[key] : undefined;
+      const det = el('details', 'adm'); const sm = el('summary');
+      sm.append(el('span', 'nm', it.name));
+      const qs = el('span', 'qs');
+      if(!counted) qs.textContent = 'לא נספר';
+      else{
+        qs.append('יש ' + SK.fmtQty(it.have) + ' · ');
+        if(decided) { const b = el('b', '', 'להכין ' + SK.fmtQty(prep)); qs.append(b); }
+        else qs.append(it.need > 0 ? `חסר ${SK.fmtQty(it.need)}` : 'מספיק');
+      }
+      sm.append(qs); det.append(sm);
+      if(counted && p){
+        const body = el('div', 'body'); const total = it.have + (decided ? prep : 0);
+        body.append(el('div', 'tot', `יש ${SK.fmtQty(it.have)}` + (decided ? ` + להכין ${SK.fmtQty(prep)} = ${SK.fmtQty(total)}` : (rec ? ' · הטבח לא קבע כמות' : ' · עוד אין החלטה, זה מה שיש כרגע')) + unitOf(it.unit)));
+        const cd = SK.coverageDays(p, total, day);
+        if(cd) for(const x of cd.days){
+          const short = x.got < x.need;
+          const row = el('div', 'dl' + (short ? ' short' : '')); row.append(el('span', '', 'יום ' + SK.DAYS[x.day]), el('span', '', `${SK.fmtQty(x.got)}/${SK.fmtQty(x.need)}` + (short ? ' ← מספיק עד כאן' : '')));
+          body.append(row);
+        }
+        body.append(el('div', 'cv', SK.coverage(p, total, day)));
+        det.append(body);
+      }
+      sec.append(det);
+    }
+    const lk = el('a', 'link', 'פתח את רשימת ההכנות של הספירה'); lk.href = `#/prep/${s.key}/${date}/${encodeURIComponent(act.id)}`;
+    sec.append(lk);
+    out.push(sec);
+  }
   return out;
 }
 

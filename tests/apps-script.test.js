@@ -239,6 +239,17 @@ test('stock: approved device gets the three stations as CSV, missing tab is empt
   assert.strictEqual(g.csv, undefined);                                    // לא מערבבים עם נתוני המתכונים
   assert.strictEqual(g.errors, undefined);                                 // בלי שגיאות, אין שדה errors
 });
+test('stock: admin flag comes only from the role column of an approved device', () => {
+  const env = withStock(approved());
+  assert.strictEqual(env.j(env.get({ a: 'stock', d: ID })).admin, false);          // בלי תפקיד = לא מנהל
+  env.devices().rows[1][6] = ' מנהל ';
+  assert.strictEqual(env.j(env.get({ a: 'stock', d: ID })).admin, true);
+  env.devices().rows[1][6] = 'מנהל מטבח';
+  assert.strictEqual(env.j(env.get({ a: 'stock', d: ID })).admin, false);          // התאמה מדויקת בלבד
+  env.devices().rows[1][6] = 'מנהל'; env.devices().rows[1][3] = false;
+  const g = env.j(env.get({ a: 'stock', d: ID }));
+  assert.strictEqual(g.admin, undefined);                                           // מכשיר שלא מאושר לא מקבל כלום
+});
 test('stock: tabs of the recipe book are never returned through a=stock', () => {
   const env = withStock(approved());
   const g = env.j(env.get({ a: 'stock', d: ID }));

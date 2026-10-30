@@ -34,8 +34,9 @@ const WINDOW_MS = 10 * 60 * 1000; // חלון קבוע: הספירה מתאפס�
 const NOTIFY_OWNER = true;        // מייל לבעלים, לכל היותר פעם בשעה
 const DEVICES_SHEET = 'מכשירים';
 const EXTRA_SHEET = 'recipes-extra';
-const DEV_HEADERS = ['זמן בקשה', 'שם', 'קוד', 'מאושר', 'נראה לאחרונה', 'מזהה (מוצפן, לא לגעת)'];
-const DEV_APPROVED = 4, DEV_SEEN = 5, DEV_HASH = 6;
+const DEV_HEADERS = ['זמן בקשה', 'שם', 'קוד', 'מאושר', 'נראה לאחרונה', 'מזהה (מוצפן, לא לגעת)', 'תפקיד'];
+const DEV_APPROVED = 4, DEV_SEEN = 5, DEV_HASH = 6, DEV_ROLE = 7;
+const ADMIN_ROLE = 'מנהל';         // כתבו "מנהל" בעמודת "תפקיד" כדי שהמכשיר יראה את טאב המנהל באפליקציית המלאי
 const DEV_REQ_GLOBAL = 20;        // בקשות גישה חדשות לכל 10 דקות, לכולם יחד
 const DEV_PENDING_MAX = 100;      // תקרה לבקשות שלא אושרו. מעבר לזה נדחות עד שמנקים את הטאב
 const STOCK_TABS = { cold: 'מלאי-פס קר', hot: 'מלאי-פס חם', tabun: 'מלאי-טאבון' };   // טאב לכל פס (אפליקציית המלאי)
@@ -125,7 +126,7 @@ function lookupDevice(id) {
   const rows = sh.getRange(2, 1, sh.getLastRow() - 1, DEV_HEADERS.length).getValues();
   for (let i = 0; i < rows.length; i++) {
     if (rows[i][DEV_HASH - 1] === key) {
-      return { sh, row: i + 2, key, name: String(rows[i][1]), approved: isTrue(rows[i][DEV_APPROVED - 1]), seen: rows[i][DEV_SEEN - 1] };
+      return { sh, row: i + 2, key, name: String(rows[i][1]), approved: isTrue(rows[i][DEV_APPROVED - 1]), seen: rows[i][DEV_SEEN - 1], admin: String(rows[i][DEV_ROLE - 1]).trim() === ADMIN_ROLE };
     }
   }
   return null;
@@ -162,6 +163,7 @@ function handleData(id) {
 function handleStock(id) {
   const r = approvedDevice(id);
   if (!r.dev) return json(r.st);
+  r.st.admin = r.dev.admin === true;
   r.st.stations = {};
   Object.keys(STOCK_TABS).forEach(k => {
     try {
@@ -194,7 +196,7 @@ function handleRequest(d) {
     rows.forEach((r, i) => { if (r[DEV_HASH - 1]) { lastDevice = i + 2; if (!isTrue(r[DEV_APPROVED - 1])) pending++; } });
     if (pending >= DEV_PENDING_MAX) return reply('busy');
     const at = lastDevice + 1;
-    sh.getRange(at, 1, 1, DEV_HEADERS.length).setValues([[new Date(), name, "'" + devCode(key), false, '', key].map(safe)]);
+    sh.getRange(at, 1, 1, DEV_HEADERS.length).setValues([[new Date(), name, "'" + devCode(key), false, '', key, ''].map(safe)]);
     sh.getRange(at, DEV_APPROVED).insertCheckboxes();
     notify('מכשיר חדש מבקש גישה לספר המתכונים', name + ' (קוד ' + devCode(key) + ')\nלאישור: טאב "' + DEVICES_SHEET + '", וי בעמודת "מאושר"\n' + SpreadsheetApp.getActive().getUrl(), 'notified-dev');
     return json({ status: 'pending', name, code: devCode(key) });

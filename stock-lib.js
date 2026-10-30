@@ -196,18 +196,29 @@ function fmtQty(n){
 
 // ---- כמה זמן זה מספיק ----
 // הבסיס של כל יום = הצריכה המשוערת של אותו יום. מדמים צריכה יום אחר יום החל מ-startDay.
-// ימים בלי בסיס (סגור) לא צורכים. מחזיר טקסט קצר בעברית.
-function coverage(product, qty, startDay){
-  if(typeof qty !== 'number' || !isFinite(qty) || qty < 0 || !Number.isInteger(startDay) || startDay < 0 || startDay > 6) return '';
-  let s = round2(qty), prev = null;
+// ימים בלי בסיס (סגור) לא צורכים ולא מופיעים. days: [{ day, need, got }], week: האם הכמות מכסה שבוע שלם.
+function coverageDays(product, qty, startDay){
+  if(typeof qty !== 'number' || !isFinite(qty) || qty < 0 || !Number.isInteger(startDay) || startDay < 0 || startDay > 6) return null;
+  let s = round2(qty);
+  const days = [];
   for(let i = 0; i < 7; i++){
-    const day = (startDay + i) % 7, use = baseFor(product, day);
-    if(use === null) continue;
-    if(s >= use){ s = round2(s - use); prev = day; continue; }
-    if(s > 0) return i === 0 ? 'מספיק לחלק מהיום' : `מספיק עד יום ${DAYS[day]} (חלק מהיום)`;
-    return prev === null ? 'לא מספיק להיום' : `מספיק עד סוף יום ${DAYS[prev]}`;
+    const day = (startDay + i) % 7, need = baseFor(product, day);
+    if(need === null) continue;
+    const got = Math.min(s, need);
+    days.push({ day, need, got });
+    s = round2(s - got);
+    if(got < need) return { days, week: false };
   }
-  return 'מספיק לשבוע ומעלה';
+  return { days, week: true };
+}
+// טקסט קצר בעברית לפי coverageDays
+function coverage(product, qty, startDay){
+  const c = coverageDays(product, qty, startDay);
+  if(!c) return '';
+  if(c.week) return 'מספיק לשבוע ומעלה';
+  const i = c.days.length - 1, last = c.days[i];       // היום הראשון שלא מכוסה במלואו
+  if(last.got > 0) return last.day === startDay ? 'מספיק לחלק מהיום' : `מספיק עד יום ${DAYS[last.day]} (חלק מהיום)`;
+  return i === 0 ? 'לא מספיק להיום' : `מספיק עד סוף יום ${DAYS[c.days[i - 1].day]}`;
 }
 
 // ---- וואטסאפ ----
@@ -241,6 +252,6 @@ function formatWhatsApp({ station, dateKey: dk, dayName, by, rows, prep, uncount
   return out.join('\n');
 }
 
-const api = { STATIONS, DAYS, HEADERS, parseDefs, baseFor, dayIdx, dateKey, addDays, sanitizeKey, productsForDay, validateCount, latestCount, prepList, fmtQty, coverage, formatWhatsApp };
+const api = { STATIONS, DAYS, HEADERS, parseDefs, baseFor, dayIdx, dateKey, addDays, sanitizeKey, productsForDay, validateCount, latestCount, prepList, fmtQty, coverageDays, coverage, formatWhatsApp };
 if(typeof module === 'object' && module.exports) module.exports = api; else root.SK = api;
 })(typeof self !== 'undefined' ? self : this);

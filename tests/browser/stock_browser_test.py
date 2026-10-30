@@ -41,6 +41,17 @@ STUB = r"""
   const fireAll = () => listeners.slice().forEach(l => { try{ l.cb(snap(l.path)); }catch(e){ console.error('stub listener', e); } });
   const deny = () => { const e = new Error('PERMISSION_DENIED'); e.code = 'PERMISSION_DENIED'; return e; };
   const serverNow = () => Date.now() + offset();
+  function validPrep(path, v){
+    const m = /^stockPrep\/(\d{4}-\d{2}-\d{2})\/(cold|hot|tabun)\/([^/]+)$/.exec(norm(path));
+    if(!m || v == null || typeof v !== 'object') return false;
+    if(get('stock/' + m[1] + '/' + m[2] + '/' + m[3]) === undefined) return false;
+    if(Object.keys(v).some(k => !['t', 'by', 'day', 'items'].includes(k))) return false;
+    if(typeof v.t !== 'number' || v.t <= 1700000000000 || v.t > serverNow() + 60000) return false;
+    if(typeof v.by !== 'string' || v.by.length < 1 || v.by.length > 40) return false;
+    if(!Number.isInteger(v.day) || v.day < 0 || v.day > 6) return false;
+    const ks = Object.keys(v.items || {}); if(!ks.length) return false;
+    return ks.every(k => k.length <= 60 && typeof v.items[k] === 'number' && v.items[k] >= 0 && v.items[k] <= 100000);
+  }
   function valid(path, v){
     const m = /^stock\/(\d{4}-\d{2}-\d{2})\/(cold|hot|tabun)\/([^/]+)$/.exec(norm(path));
     if(!m || v == null || typeof v !== 'object') return false;
@@ -51,6 +62,7 @@ STUB = r"""
     return ks.every(k => k.length <= 60 && typeof v.items[k] === 'number' && v.items[k] >= 0 && v.items[k] <= 100000);
   }
   function apply(path, val){
+    if(norm(path).startsWith('stockPrep/')){ if(!validPrep(path, val)) throw deny(); put(path, val); writes.push({ path: norm(path), val: clone(val) }); fireAll(); return; }
     if(get(path) !== undefined) throw deny();
     if(rejectNext){ rejectNext = false; throw deny(); }
     if(!valid(path, val)) throw deny();
@@ -78,10 +90,10 @@ def init_script(target, skew_extra=0, seed=None, offset=0):
 """
 
 class Srv:
-    def __init__(self, status='ok'): self.status = status; self.posts = []; self.gets = 0; self.old = False; self.net = True
+    def __init__(self, status='ok'): self.admin = False; self.status = status; self.posts = []; self.gets = 0; self.old = False; self.net = True
     def body(self):
         if self.old: return 'ok'
-        if self.status == 'ok': return json.dumps({'status': 'ok', 'name': 'דני', 'code': 'ABCD', 'stations': CSV})
+        if self.status == 'ok': return json.dumps({'status': 'ok', 'name': 'דני', 'code': 'ABCD', 'stations': CSV, 'admin': self.admin})
         if self.status == 'unknown': return json.dumps({'status': 'unknown'})
         return json.dumps({'status': self.status, 'name': 'דני', 'code': 'ABCD'})
 
@@ -193,6 +205,12 @@ async def main():
             await pg.go_back(); await pg.wait_for_selector('.st'); await pg.locator('.st', has_text='פס קר').click(); await pg.wait_for_selector('.need')
             check('E10 chosen amount survives leaving and returning', (await pg.locator('.need .pq input').first.input_value()) == '4')
             await pg.locator('.need .pq input').first.fill('3')
+            nw = len(await pg.evaluate('window.__fb.writes'))
+            await pg.locator('a.wa').dispatch_event('click'); await pg.wait_for_timeout(300)
+            w3 = await pg.evaluate('window.__fb.writes')
+            pw = [x for x in w3 if x['path'].startswith('stockPrep/2026-10-28/cold/')]
+            check('E11 clicking whatsapp saves the chosen amounts to stockPrep', len(w3) == nw + 1 and len(pw) == 1 and pw[0]['val']['items'].get('סחוג') == 3 and pw[0]['val']['items'].get('חומוס') == 0 and pw[0]['val']['day'] == 3 and pw[0]['val']['by'] == 'דני', pw)
+            check('E12 non-admin sees no admin entry and #/admin falls back to home', await pg.locator('button.link', has_text='מנהל').count() == 0)
             await pg.screenshot(path='/tmp/stock_prep.png')
 
             # יום אחר: מחר (חמישי): סחוג 6-1=5, מטבוחה 3-1=2, פסטו חדש לא נספר
@@ -217,7 +235,7 @@ async def main():
             await pg.locator('.bar .btn').click(); await pg.wait_for_selector('.need, .empty')
             await pg.wait_for_timeout(300)
             w = await pg.evaluate('window.__fb.writes')
-            check('G1 second count written as a new child', len(w) == 2 and w[0]['path'] != w[1]['path'], [x['path'] for x in w])
+            check('G1 second count written as a new child', len([x for x in w if x['path'].startswith('stock/')]) == 2 and len({x['path'] for x in w}) == len(w), [x['path'] for x in w])
             needs3 = await pg.locator('.need .pq input').evaluate_all('els => els.map(e => e.value)')
             check('G2 latest count is the active one (מטבוחה 3 to prepare, סחוג 0)', needs3 == ['3'], needs3)
             await pg.go_back(); await pg.go_back(); await pg.wait_for_selector('.st')
@@ -325,8 +343,30 @@ async def main():
             check('M4 blocked: locked, cache wiped, home emptied', 'אין גישה' in await pg.locator('.gate-box h1').inner_text() and await pg.evaluate("localStorage.getItem('sk-defs-v1')") is None and await pg.locator('.st').count() == 0)
             await ctx.close()
 
+            # ---------- מנהל ----------
+            seed = {'stock': {'2026-10-28': {'cold': {'-c1': {'t': T0, 'by': 'דני', 'items': {'סחוג': 1, 'מטבוחה': 3}}}}},
+                    'stockPrep': {'2026-10-28': {'cold': {'-c1': {'t': T0 + 60000, 'by': 'דני', 'day': 3, 'items': {'סחוג': 6, 'מטבוחה': 0}}}}}}
+            srv = Srv('ok'); srv.admin = True; ctx = await mk_ctx(b, base, srv, seed=seed); pg = await new_page(ctx, errs)
+            await pg.goto(base + '/stock.html'); await pg.wait_for_selector('.st')
+            check('R1 admin sees the admin entry on home', await pg.locator('button.link', has_text='מנהל').count() == 1)
+            await pg.locator('button.link', has_text='מנהל').click(); await pg.wait_for_selector('.adm')
+            atxt = await pg.locator('#view').inner_text()
+            check('R2 admin view: station, who counted, cook decision', 'פס קר' in atxt and 'נספר ב-' in atxt and 'דני' in atxt and 'החלטת הכנה נשלחה' in atxt, atxt)
+            check('R3 admin row summary shows have and prepare amount', 'יש 1' in atxt and 'להכין 6' in atxt, atxt)
+            await pg.locator('.adm', has_text='סחוג').locator('summary').click()
+            dt = await pg.locator('.adm', has_text='סחוג').inner_text()
+            check('R4 admin detail: have + prepare = total and day-by-day with shortfall marker', 'יש 1 + להכין 6 = 7' in dt and 'יום רביעי' in dt and '4/4' in dt and '3/6' in dt and '← מספיק עד כאן' in dt and 'מספיק עד יום חמישי (חלק מהיום)' in dt, dt)
+            check('R5 admin other stations say not counted', (await pg.locator('#view').inner_text()).count('לא נספר ביום הזה') == 2)
+            await pg.locator('.chip', has_text='אתמול').click(); await pg.wait_for_timeout(200)
+            check('R6 previous day: nothing counted for all stations', (await pg.locator('#view').inner_text()).count('לא נספר ביום הזה') == 3)
+            await pg.goto(base + '/stock.html#/admin/not-a-date'); await pg.wait_for_selector('.adm-date')
+            check('R7 bad date in the URL falls back to today', await pg.locator('.adm-date input').input_value() == '2026-10-28')
+            await ctx.close()
+
             # ---------- נגישות בסיסית ----------
             srv = Srv('ok'); ctx = await mk_ctx(b, base, srv); pg = await new_page(ctx, errs)
+            await pg.goto(base + '/stock.html#/admin'); await pg.wait_for_selector('.st')
+            check('E13 non-admin on #/admin gets the home screen', await pg.locator('.adm').count() == 0 and await pg.locator('.st').count() == 3)
             bad = []
             for h in ['#/', '#/count/cold', '#/history']:
                 await pg.goto(base + '/stock.html' + h); await pg.wait_for_selector('#view > *')

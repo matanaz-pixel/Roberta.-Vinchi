@@ -464,3 +464,18 @@ test('formatWhatsApp עם rows: כל המוצרים, יש, להכין וכיסו
 test('formatWhatsApp עם rows ריק', () => {
   assert.match(SK.formatWhatsApp({ station: 'פס', rows: [] }), /אין מוצרים/);
 });
+
+test('coverageDays: פירוט יום-יום כמו בדוגמה (יש 1 + להכין 9 = 10)', () => {
+  const p = { name: 'x', base: [3, 4, 5, 5, 5, 5, 5] };
+  const c = SK.coverageDays(p, 10, 0);
+  assert.deepEqual(c.days, [{ day: 0, need: 3, got: 3 }, { day: 1, need: 4, got: 4 }, { day: 2, need: 5, got: 3 }]);
+  assert.equal(c.week, false);
+  assert.equal(SK.coverage(p, 10, 0), 'מספיק עד יום שלישי (חלק מהיום)');
+  assert.equal(SK.coverageDays(p, 100, 0).week, true);
+  assert.equal(SK.coverageDays(p, 100, 0).days.length, 7);
+  assert.equal(SK.coverageDays(p, -1, 0), null);
+  assert.equal(SK.coverageDays(p, 5, 7), null);
+  // יום סגור (בלי בסיס) מדולג
+  const q = { name: 'y', base: [3, null, 4, 4, 4, 4, 4] };
+  assert.deepEqual(SK.coverageDays(q, 5, 0).days.map(d => d.day), [0, 2]);
+});

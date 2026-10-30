@@ -41,6 +41,37 @@
           }
         }
       }
+    },
+    "stockPrep": {
+      ".read": true,
+      "$date": {
+        ".validate": "$date.matches(/^20[2-9][0-9]-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/)",
+        "$station": {
+          ".validate": "$station == 'cold' || $station == 'hot' || $station == 'tabun'",
+          "$count": {
+            ".write": "newData.exists() && root.child('stock').child($date).child($station).child($count).exists()",
+            ".validate": "$count.length <= 30 && newData.hasChildren(['t', 'by', 'day', 'items'])",
+            "t": {
+              ".validate": "newData.isNumber() && newData.val() > 1700000000000 && newData.val() <= now + 60000"
+            },
+            "by": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+            },
+            "day": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 6"
+            },
+            "items": {
+              "$item": {
+                ".validate": "$item.length <= 60 && newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
+              },
+              ".validate": "newData.hasChildren()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
+      }
     }
   }
 }
