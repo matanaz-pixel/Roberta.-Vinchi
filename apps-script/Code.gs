@@ -113,8 +113,7 @@ function devicesSheet() {
   sh.appendRow(DEV_HEADERS);
   sh.setFrozenRows(1);
   sh.getRange(1, 1, 1, DEV_HEADERS.length).setFontWeight('bold');
-  sh.getRange(2, DEV_APPROVED, sh.getMaxRows() - 1, 1).insertCheckboxes();
-  sh.hideColumns(DEV_HASH);
+  sh.hideColumns(DEV_HASH);       // תיבות הסימון נוספות שורה-שורה: תיבות ריקות בעמודה שלמה נספרות כשורות עם תוכן ושוברות את getLastRow
   return sh;
 }
 
@@ -188,12 +187,15 @@ function handleRequest(d) {
     const existing = lookupDevice(d.dev);
     if (existing) return json(devStatus(existing));
     if (!windowOk('dq', DEV_REQ_GLOBAL)) return reply('busy');
+    // שורת מכשיר = שורה שיש בה מזהה. שורות ריקות (או עם תיבת סימון בלבד) לא נספרות.
     const last = sh.getLastRow();
-    if (last >= 2) {
-      const pending = sh.getRange(2, DEV_APPROVED, last - 1, 1).getValues().filter(r => !isTrue(r[0])).length;
-      if (pending >= DEV_PENDING_MAX) return reply('busy');
-    }
-    sh.appendRow([new Date(), name, "'" + devCode(key), false, '', key].map(safe));
+    const rows = last >= 2 ? sh.getRange(2, 1, last - 1, DEV_HEADERS.length).getValues() : [];
+    let lastDevice = 1, pending = 0;
+    rows.forEach((r, i) => { if (r[DEV_HASH - 1]) { lastDevice = i + 2; if (!isTrue(r[DEV_APPROVED - 1])) pending++; } });
+    if (pending >= DEV_PENDING_MAX) return reply('busy');
+    const at = lastDevice + 1;
+    sh.getRange(at, 1, 1, DEV_HEADERS.length).setValues([[new Date(), name, "'" + devCode(key), false, '', key].map(safe)]);
+    sh.getRange(at, DEV_APPROVED).insertCheckboxes();
     notify('מכשיר חדש מבקש גישה לספר המתכונים', name + ' (קוד ' + devCode(key) + ')\nלאישור: טאב "' + DEVICES_SHEET + '", וי בעמודת "מאושר"\n' + SpreadsheetApp.getActive().getUrl(), 'notified-dev');
     return json({ status: 'pending', name, code: devCode(key) });
   } finally {

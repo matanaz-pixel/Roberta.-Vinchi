@@ -20,7 +20,10 @@ class Sheet {
     return {
       getValues: grid, getValue: () => cell(0, 0) ?? '',
       setValue(v){ while(self.rows.length < r) self.rows.push([]); self.rows[r - 1][c - 1] = v; return this; },
-      insertCheckboxes(){ self.checkboxCols.push(c); return this; }, setFontWeight(){ return this; }, setDataValidation(){ return this; },
+      setValues(vs){ vs.forEach((row, i) => { while(self.rows.length < r + i) self.rows.push([]); row.forEach((v, j) => { self.rows[r - 1 + i][c - 1 + j] = v; }); }); return this; },
+      insertCheckboxes(){ self.checkboxCols.push(c); for(let i = 0; i < nr; i++){ while(self.rows.length < r + i) self.rows.push([]); const row = self.rows[r - 1 + i]; if(row[c - 1] === undefined || row[c - 1] === '') row[c - 1] = false; } return this; },
+      // כמו Google: תיבת סימון ריקה היא FALSE, ולכן נספרת כתוכן ב-getLastRow
+      setFontWeight(){ return this; }, setDataValidation(){ return this; },
     };
   }
   setFrozenRows(){} setColumnWidths(){} hideColumns(c){ this.hidden.push(c); }
@@ -277,4 +280,21 @@ test('stock: a sheet error in one tab does not break the others', () => {
   assert.strictEqual(g.stations.hot, '');
   assert.deepStrictEqual(g.errors, { hot: 'read_failed' });
   assert.ok(g.stations.cold);
+});
+
+test('regression: a fresh sheet accepts the very first request (checkboxes must not count as pending rows)', () => {
+  const env = makeEnv();
+  assert.strictEqual(env.j(env.post({ a: 'request', dev: ID, name: 'דני' })).status, 'pending');
+  assert.strictEqual(env.devices().rows[1][5].startsWith('h'), true);
+});
+test('regression: a sheet that already has 999 empty checkbox rows still works and appends right after the last device', () => {
+  const env = makeEnv();
+  env.post({ a: 'request', dev: ID, name: 'דני' });
+  const sh = env.devices();
+  sh.getRange(3, 4, 998, 1).insertCheckboxes();                             // מצב ישן: תיבות סימון על כל העמודה
+  assert.strictEqual(env.j(env.post({ a: 'request', dev: ID2, name: 'דנה' })).status, 'pending');
+  assert.strictEqual(sh.rows[2][1], 'דנה');                                  // שורה 3, ולא שורה 1001
+  assert.strictEqual(env.j(env.get({ a: 'data', d: ID2 })).status, 'pending');
+  sh.rows[2][3] = true;
+  assert.strictEqual(env.j(env.get({ a: 'data', d: ID2 })).status, 'ok');
 });
