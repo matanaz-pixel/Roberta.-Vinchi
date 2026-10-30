@@ -435,3 +435,32 @@ test('מפריד אלפים בפסיק נדחה ולא נקרא כ-1', () => {
   const r = SK2.validateCount([{ name: 'א', unit: '', base: [5, 5, 5, 5, 5, 5, 5] }], { 'א': '1,000' }, 0);
   assert.strictEqual(r.ok, false);
 });
+
+// ---- coverage + הודעת וואטסאפ עם כל המוצרים ----
+const covP = { name: 'x', base: [5, 4, null, 6, 6, 6, 6] };
+test('coverage: מחשב עד איזה יום מספיק', () => {
+  assert.equal(SK.coverage(covP, 0, 0), 'לא מספיק להיום');
+  assert.equal(SK.coverage(covP, 3, 0), 'מספיק לחלק מהיום');
+  assert.equal(SK.coverage(covP, 5, 0), 'מספיק עד סוף יום ראשון');
+  assert.equal(SK.coverage(covP, 7, 0), 'מספיק עד יום שני (חלק מהיום)');
+  assert.equal(SK.coverage(covP, 9, 0), 'מספיק עד סוף יום שני');
+  assert.equal(SK.coverage(covP, 10, 0), 'מספיק עד יום רביעי (חלק מהיום)');
+  assert.equal(SK.coverage(covP, 40, 0), 'מספיק לשבוע ומעלה');
+  assert.equal(SK.coverage(covP, -1, 0), '');
+  assert.equal(SK.coverage(covP, NaN, 0), '');
+  assert.equal(SK.coverage(covP, 5, 9), '');
+});
+test('formatWhatsApp עם rows: כל המוצרים, יש, להכין וכיסוי', () => {
+  const t = SK.formatWhatsApp({ station: 'פס קר', dateKey: '2026-11-01', dayName: 'ראשון', by: 'דני', rows: [
+    { name: 'רוטב', unit: 'ק״ג', have: 2, prep: 3, cover: 'מספיק עד יום שני (חלק מהיום)' },
+    { name: 'בצל', unit: 'ק״ג' },
+    { name: 'שום', unit: 'ק״ג', have: 9, prep: 0, cover: 'מספיק עד סוף יום שני' },
+  ] });
+  assert.equal(t, ['הכנות פס קר, ראשון 01/11/2026', 'נספר על ידי דני', '',
+    'רוטב: יש 2 ק״ג, להכין 3 ק״ג, מספיק עד יום שני (חלק מהיום)',
+    'בצל: לא נספר',
+    'שום: יש 9 ק״ג, אין צורך להכין, מספיק עד סוף יום שני'].join('\n'));
+});
+test('formatWhatsApp עם rows ריק', () => {
+  assert.match(SK.formatWhatsApp({ station: 'פס', rows: [] }), /אין מוצרים/);
+});

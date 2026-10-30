@@ -194,13 +194,44 @@ function fmtQty(n){
   return String(round2(n));
 }
 
+// ---- כמה זמן זה מספיק ----
+// הבסיס של כל יום = הצריכה המשוערת של אותו יום. מדמים צריכה יום אחר יום החל מ-startDay.
+// ימים בלי בסיס (סגור) לא צורכים. מחזיר טקסט קצר בעברית.
+function coverage(product, qty, startDay){
+  if(typeof qty !== 'number' || !isFinite(qty) || qty < 0 || !Number.isInteger(startDay) || startDay < 0 || startDay > 6) return '';
+  let s = round2(qty), prev = null;
+  for(let i = 0; i < 7; i++){
+    const day = (startDay + i) % 7, use = baseFor(product, day);
+    if(use === null) continue;
+    if(s >= use){ s = round2(s - use); prev = day; continue; }
+    if(s > 0) return i === 0 ? 'מספיק לחלק מהיום' : `מספיק עד יום ${DAYS[day]} (חלק מהיום)`;
+    return prev === null ? 'לא מספיק להיום' : `מספיק עד סוף יום ${DAYS[prev]}`;
+  }
+  return 'מספיק לשבוע ומעלה';
+}
+
 // ---- וואטסאפ ----
-function formatWhatsApp({ station, dateKey: dk, dayName, by, prep, uncounted } = {}){
+// rows: כל מוצרי הפס: { name, unit, have (מספר או undefined אם לא נספר), prep (מספר או undefined), cover }
+function formatWhatsApp({ station, dateKey: dk, dayName, by, rows, prep, uncounted } = {}){
   const m = typeof dk === 'string' && dk.match(KEY_RE);
   const when = [oneLine(dayName), m ? `${m[3]}/${m[2]}/${m[1]}` : ''].filter(Boolean).join(' ');
   const out = ['הכנות' + (oneLine(station) ? ' ' + oneLine(station) : '') + (when ? ', ' + when : '')];
   if(oneLine(by)) out.push('נספר על ידי ' + oneLine(by));
   out.push('');
+  if(Array.isArray(rows)){
+    for(const r of rows){
+      const u = oneLine(r.unit) ? ' ' + oneLine(r.unit) : '';
+      const parts = [];
+      const counted = typeof r.have === 'number' && isFinite(r.have);
+      parts.push(counted ? `יש ${fmtQty(r.have)}${u}` : 'לא נספר');
+      if(typeof r.prep === 'number' && isFinite(r.prep) && r.prep > 0) parts.push(`להכין ${fmtQty(r.prep)}${u}`);
+      else if(counted) parts.push('אין צורך להכין');
+      if(oneLine(r.cover) && counted) parts.push(oneLine(r.cover));
+      out.push(`${oneLine(r.name)}: ${parts.join(', ')}`);
+    }
+    if(!rows.length) out.push('אין מוצרים להיום.');
+    return out.join('\n');
+  }
   const list = Array.isArray(prep) ? prep : [], un = Array.isArray(uncounted) ? uncounted : [];
   if(list.length){
     out.push('להכין:');
@@ -210,6 +241,6 @@ function formatWhatsApp({ station, dateKey: dk, dayName, by, prep, uncounted } =
   return out.join('\n');
 }
 
-const api = { STATIONS, DAYS, HEADERS, parseDefs, baseFor, dayIdx, dateKey, addDays, sanitizeKey, productsForDay, validateCount, latestCount, prepList, fmtQty, formatWhatsApp };
+const api = { STATIONS, DAYS, HEADERS, parseDefs, baseFor, dayIdx, dateKey, addDays, sanitizeKey, productsForDay, validateCount, latestCount, prepList, fmtQty, coverage, formatWhatsApp };
 if(typeof module === 'object' && module.exports) module.exports = api; else root.SK = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -84,6 +84,14 @@
   .need .q b{ display:block; font-size:30px; color:var(--accent); line-height:1.1; font-variant-numeric:tabular-nums; }
   .need .q span{ font-size:13px; color:var(--text-dim); }
   .need a{ display:inline-block; margin-top:4px; color:var(--green); font-size:15px; padding:6px 0; min-height:32px; }
+  .need .pq{ display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .need .pq .l2{ display:flex; gap:6px; align-items:center; }
+  .need .pq input{ width:72px; height:52px; border:1.5px solid var(--line); border-radius:14px; text-align:center; font-size:24px; font-weight:500; background:#fff; color:var(--text); }
+  .need .pq input:focus{ outline:none; border-color:var(--green); box-shadow:0 0 0 3px var(--green-soft); }
+  .need .pq .step{ width:48px; height:52px; border-radius:14px; border:1.5px solid var(--green); background:var(--card); color:var(--green); font-size:28px; line-height:1; cursor:pointer; }
+  .need .pq span{ font-size:13px; color:var(--text-dim); }
+  .need .cov{ font-size:15px; color:var(--green); margin-top:4px; font-weight:500; }
+  .need.wrapcol{ flex-wrap:wrap; }
   .grp{ margin:16px 0 8px; font-size:16px; font-weight:600; color:var(--green); }
   details.grp-d{ margin-top:14px; }
   details.grp-d summary{ min-height:48px; display:flex; align-items:center; cursor:pointer; font-weight:600; color:var(--green); }
@@ -130,7 +138,8 @@
 // ============ הגדרות ============
 // אותו Web App של ספר המתכונים: הגדרות המוצרים נקראות ממנו רק למכשיר מאושר (אותו אישור מכשיר, אותו מפתח במכשיר).
 const ACCESS_URL = 'https://script.google.com/macros/s/AKfycbyT2q5HDJJ77nzPrpd-FayB1Mq5piCG6kLpP9Kx1zq-h4dbEYZPtgNK5JYG4WXv9xSj/exec';
-const DEVICE_KEY = 'rb-device-v1', SENDER_KEY = 'rb-sender';
+const DEVICE_KEY = 'rb-device-v1', SENDER_KEY = 'rb-sender', PREP_KEY = 'rb-prep-v1';
+function prepVals(){ const d = store.get(PREP_KEY); return d && typeof d === 'object' ? d : {}; }
 const DEFS_KEY = 'sk-defs-v1', DRAFT_KEY = 'sk-draft-v1', OUTBOX_KEY = 'sk-outbox-v1';
 const DRAFT_MAX_AGE = 2 * 24 * 3600e3;
 const SK = window.SK || null;
@@ -558,16 +567,45 @@ function viewPrep(st, date, id){
   out.push(el('div', 'dim', `נספר ב-${hhmm(c.t)} על ידי ${c.by}` + (specific ? ' · לפי ההגדרות הנוכחיות של המוצרים והבסיס של יום ' + SK.DAYS[day] : '')));
   const nCounts = Object.keys(counts).length;
   if(!specific && nCounts > 1){ const h = el('button', 'link', `ספירות קודמות היום: ${nCounts - 1}`); h.type = 'button'; h.onclick = () => go('#/history'); out.push(h); }
+
+  // הכמות שהטבח מחליט להכין: ברירת מחדל = החסר, ניתן לשנות, נשמר במכשיר
+  const pk = [st, d, c.id, day].join('|');
+  const saved = (prepVals()[pk] || {}).v || {};
+  const chosen = Object.create(null);
+  for(const it of list.prep){ const v = saved[SK.sanitizeKey(it.name)]; chosen[it.name] = (typeof v === 'number' && isFinite(v) && v >= 0 && v <= 100000) ? v : it.need; }
+  const prodByName = Object.create(null); for(const p of prods) prodByName[p.name] = p;
+  const waRows = () => [
+    ...list.prep.map(it => ({ name: it.name, unit: it.unit, have: it.have, prep: chosen[it.name], cover: SK.coverage(prodByName[it.name], it.have + chosen[it.name], day) })),
+    ...list.uncounted.map(it => ({ name: it.name, unit: it.unit })),
+    ...list.enough.map(it => ({ name: it.name, unit: it.unit, have: it.have, prep: 0, cover: SK.coverage(prodByName[it.name], it.have, day) }))
+  ];
+  const wa = el('a', 'btn wa', 'שלח בוואטסאפ');
+  const updateWa = () => { wa.href = 'https://wa.me/?text=' + encodeURIComponent(SK.formatWhatsApp({ station: stationName(st), dateKey: d, dayName: SK.DAYS[day], by: c.by, rows: waRows() })); };
+  const persist = () => { const all = prepVals(); const v = {}; for(const it of list.prep) v[SK.sanitizeKey(it.name)] = chosen[it.name]; all[pk] = { ts: Date.now(), v }; for(const k of Object.keys(all)) if(!all[k] || Date.now() - all[k].ts > 3 * 864e5) delete all[k]; store.set(PREP_KEY, all); };
+
   out.push(el('div', 'grp', `להכין (${list.prep.length})`));
   const wrap = el('div', 'rows');
   if(!list.prep.length) wrap.append(el('div', 'empty', 'אין מה להכין. הכול מספיק.'));
   for(const it of list.prep){
     const r = el('div', 'need'); const info = el('div', 'info');
-    info.append(el('div', 'nm', it.name), el('div', 'sub', `יש ${SK.fmtQty(it.have)} מתוך ${SK.fmtQty(it.base)}${it.unit ? ' ' + it.unit : ''}`));
+    info.append(el('div', 'nm', it.name), el('div', 'sub', `יש ${SK.fmtQty(it.have)} מתוך ${SK.fmtQty(it.base)}${it.unit ? ' ' + it.unit : ''} · חסר ${SK.fmtQty(it.need)}`));
     if(it.note) info.append(el('div', 'sub', it.note));
+    const cov = el('div', 'cov'); info.append(cov);
     const a = el('a', '', 'פתח מתכון'); a.href = './recipes.html#q=' + encodeURIComponent(it.recipe || it.name); info.append(a);
-    const q = el('div', 'q'); q.append(el('b', '', SK.fmtQty(it.need)), el('span', '', it.unit || ''));
-    r.append(info, q); wrap.append(r);
+    const pq = el('div', 'pq'); const l2 = el('div', 'l2');
+    const minus = el('button', 'step', '−'); minus.type = 'button'; minus.setAttribute('aria-label', 'הפחת ' + it.name);
+    const plus = el('button', 'step', '+'); plus.type = 'button'; plus.setAttribute('aria-label', 'הוסף ' + it.name);
+    const inp = el('input'); inp.type = 'text'; inp.inputMode = 'decimal'; inp.setAttribute('aria-label', 'כמה להכין ' + it.name);
+    inp.value = SK.fmtQty(chosen[it.name]);
+    const step = it.base >= 20 ? 5 : it.base >= 5 ? 1 : 0.5;
+    const set = n => { chosen[it.name] = n; cov.textContent = SK.coverage(prodByName[it.name], it.have + n, day); updateWa(); persist(); };
+    inp.addEventListener('input', () => { const t = inp.value.trim().replace(',', '.'); if(!/^\d+(\.\d{1,2})?$/.test(t)) return; const n = Number(t); if(n <= 100000) set(n); });
+    inp.addEventListener('blur', () => { inp.value = SK.fmtQty(chosen[it.name]); });
+    minus.onclick = () => { const n = Math.max(0, Math.round((chosen[it.name] - step) * 100) / 100); inp.value = SK.fmtQty(n); set(n); };
+    plus.onclick = () => { const n = Math.min(100000, Math.round((chosen[it.name] + step) * 100) / 100); inp.value = SK.fmtQty(n); set(n); };
+    cov.textContent = SK.coverage(prodByName[it.name], it.have + chosen[it.name], day);
+    l2.append(minus, inp, plus); pq.append(el('span', '', 'להכין' + (it.unit ? ' (' + it.unit + ')' : '')), l2);
+    r.classList.add('wrapcol'); r.append(info, pq); wrap.append(r);
   }
   out.push(wrap);
   if(list.uncounted.length){
@@ -582,8 +620,7 @@ function viewPrep(st, date, id){
   }
   const acts = el('div', 'actions');
   if(!specific){ const n = el('button', 'btn', 'ספירה חדשה'); n.type = 'button'; n.onclick = () => go('#/count/' + st); acts.append(n); }
-  const wa = el('a', 'btn wa', 'שלח בוואטסאפ');
-  wa.href = 'https://wa.me/?text=' + encodeURIComponent(SK.formatWhatsApp({ station: stationName(st), dateKey: d, dayName: SK.DAYS[day], by: c.by, prep: list.prep, uncounted: list.uncounted }));
+  updateWa();
   wa.target = '_blank'; wa.rel = 'noopener'; acts.append(wa);
   out.push(acts);
   return out;
