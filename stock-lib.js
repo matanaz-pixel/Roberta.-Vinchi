@@ -81,10 +81,13 @@ function sanitizeKey(name){
 
 // ---- הגדרות מהגיליון ----
 // ערך בסיס: ריק או 0 = לא נדרש. אחרת מספר 0..100000 עד 2 ספרות (פסיק עשרוני מתקבל). אחר = null + אזהרה.
+const THOUSANDS_RE = /,\d{3}(\D|$)/;
 const NUM_RE = /^(\d+(\.\d*)?|\.\d+)$/;
 function parseQty(raw){
-  const s = String(raw == null ? '' : raw).trim().replace(',', '.');
+  let s = String(raw == null ? '' : raw).trim();
   if(s === '') return { v: null };
+  if(THOUSANDS_RE.test(s)) return { v: null, bad: true };       // "1,000" אינו 1: דוחים במקום לנחש
+  s = s.replace(',', '.');
   if(!NUM_RE.test(s)) return { v: null, bad: true };
   const n = Number(s);
   if(!isFinite(n) || n > MAX_QTY || !hasTwoDecimals(n)) return { v: null, bad: true };
@@ -128,8 +131,10 @@ function parseHave(v){
   let n;
   if(typeof v === 'number') n = v;
   else if(typeof v === 'string'){
-    const s = v.trim().replace(',', '.');
+    let s = v.trim();
     if(s === '') return undefined;
+    if(THOUSANDS_RE.test(s)) return null;
+    s = s.replace(',', '.');
     if(!NUM_RE.test(s)) return null;
     n = Number(s);
   }else return null;

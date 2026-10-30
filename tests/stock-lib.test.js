@@ -423,3 +423,15 @@ test('end to end: sheet CSV -> counts -> prep list for the chosen day', () => {
   const wa = SK.formatWhatsApp({ station: 'פס קר', dateKey: SK.dateKey(new Date('2026-10-30T08:00:00Z')), dayName: SK.DAYS[day], by: 'דני', ...out });
   assert.ok(wa.includes('רוטב עגבניות: 10.5 מיכל'));
 });
+
+test('מפריד אלפים בפסיק נדחה ולא נקרא כ-1', () => {
+  const SK2 = require('../stock-lib.js');
+  const csv = 'מוצר,יחידה,ראשון,שני,שלישי,רביעי,חמישי,שישי,שבת\nא,ק"ג,"1,000",1.5,"1,5",,,,\n';
+  const d = SK2.parseDefs(csv);
+  assert.strictEqual(d.products[0].base[0], null);
+  assert.strictEqual(d.products[0].base[1], 1.5);
+  assert.strictEqual(d.products[0].base[2], 1.5);
+  assert.ok(d.warnings.some(w => w.includes('1,000')));
+  const r = SK2.validateCount([{ name: 'א', unit: '', base: [5, 5, 5, 5, 5, 5, 5] }], { 'א': '1,000' }, 0);
+  assert.strictEqual(r.ok, false);
+});

@@ -56,7 +56,7 @@
   .row.bad{ border-color:var(--accent); background:#fffafa; }
   .row .l1{ display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
   .row .nm{ font-size:19px; font-weight:500; }
-  .row .base{ font-size:14px; color:var(--text-dim); white-space:nowrap; }
+  .row .base{ font-size:14px; color:var(--text-dim); }
   .row .l2{ display:flex; gap:8px; margin-top:10px; align-items:center; }
   .row input{ flex:1; min-width:0; height:52px; border:1.5px solid var(--line); border-radius:14px; text-align:center; font-size:24px; font-weight:500; background:#fff; color:var(--text); }
   .row input:focus{ outline:none; border-color:var(--green); box-shadow:0 0 0 3px var(--green-soft); }
@@ -77,6 +77,7 @@
 
   .need{ display:flex; gap:10px; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:18px; padding:12px 14px; }
   .need .info{ flex:1; min-width:0; }
+  .need .info a{ display:inline-flex; align-items:center; min-height:48px; padding:0 8px; color:var(--green); }
   .need .nm{ font-size:19px; font-weight:500; }
   .need .sub{ font-size:14px; color:var(--text-dim); margin-top:2px; }
   .need .q{ text-align:center; min-width:76px; }
@@ -477,7 +478,7 @@ function viewCount(st){
   const nameIn = el('input'); nameIn.type = 'text'; nameIn.maxLength = 40; nameIn.value = sender || typedName; nameIn.autocomplete = 'name'; nameIn.id = 'sender-in';
   nameIn.addEventListener('input', () => { typedName = nameIn.value; });
   const nameField = el('div', 'field'); const nl = el('label', '', 'השם שלך'); nl.htmlFor = 'sender-in'; nameField.append(nl, nameIn);
-  if(!sender) out.push(nameField);
+  out.push(nameField);
   const rows = el('div', 'rows');
   const save = el('button', 'btn primary', 'שמור ספירה והצג הכנות'); save.type = 'button';
   const rowEls = {};
@@ -485,7 +486,7 @@ function viewCount(st){
   const refresh = () => {
     const n = prods.filter(p => vals[SK.sanitizeKey(p.name)] !== undefined && String(vals[SK.sanitizeKey(p.name)]).trim() !== '').length;
     progress.textContent = `נספרו ${n} מתוך ${prods.length}`;
-    save.disabled = saving || n === 0;
+    save.disabled = saving;
   };
   for(const p of prods){
     const key = SK.sanitizeKey(p.name);
@@ -508,7 +509,7 @@ function viewCount(st){
   const bar = el('div', 'bar'); bar.append(save); out.push(bar);
   save.onclick = async () => {
     if(saving) return;
-    const who = (sender || nameIn.value).trim().slice(0, 40);
+    const who = nameIn.value.trim().slice(0, 40);
     errBox.hidden = true;
     if(!who){ errBox.textContent = 'כתבו את השם שלכם לפני השמירה.'; errBox.hidden = false; nameIn.focus(); return; }
     const raw = {}; for(const p of prods){ const k = SK.sanitizeKey(p.name); if(vals[k] !== undefined) raw[k] = vals[k]; }
