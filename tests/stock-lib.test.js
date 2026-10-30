@@ -426,7 +426,7 @@ test('end to end: sheet CSV -> counts -> prep list for the chosen day', () => {
 
 test('מפריד אלפים בפסיק נדחה ולא נקרא כ-1', () => {
   const SK2 = require('../stock-lib.js');
-  const csv = 'מוצר,יחידה,ראשון,שני,שלישי,רביעי,חמישי,שישי,שבת\nא,ק"ג,"1,000",1.5,"1,5",,,,\n';
+  const csv = 'מוצר,יחידה,ראשון,שני,שלישי,רביעי,חמישי,שישי,שבת\nא,ליטר,"1,000",1.5,"1,5",,,,\n';
   const d = SK2.parseDefs(csv);
   assert.strictEqual(d.products[0].base[0], null);
   assert.strictEqual(d.products[0].base[1], 1.5);

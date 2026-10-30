@@ -149,14 +149,15 @@ async def main():
             await pg.locator('.st', has_text='פס קר').click(); await pg.wait_for_selector('.row')
             names = await pg.locator('.row .nm').all_inner_texts()
             check('C1 count shows only products with a base today (פסטו hidden)', len(names) == 4 and 'פסטו' not in names, names)
-            check('C2 save disabled until something counted', await pg.locator('.bar .btn').is_disabled())
+            await pg.fill('#sender-in', 'דני'); await pg.locator('.bar .btn').click()
+            check('C2 empty save shows a clear message and saves nothing', not await pg.locator('.bar .btn').is_disabled() and 'לפחות מוצר' in await pg.locator('.banner.err[role=alert]').inner_text())
             check('C3 xss product name rendered as text', XSS in names and await pg.evaluate('window.__xss === undefined') and await pg.locator('.row img').count() == 0)
             await pg.locator('.row', has_text='סחוג').locator('input').fill('1')
             await pg.locator('.row', has_text='מטבוחה').locator('button.step').nth(1).click()    # + מ-ריק = 1
             await pg.locator('.row', has_text='חומוס').locator('input').fill('5,5')               # פסיק עשרוני
             check('C4 progress shows 3 of 4', '3 מתוך 4' in await pg.locator('.progress').inner_text())
             await pg.screenshot(path='/tmp/stock_count.png')
-            await pg.locator('.bar .btn').click()
+            await pg.fill('#sender-in', ''); await pg.locator('.bar .btn').click()
             check('C5 name required when unknown', 'השם' in await pg.locator('.banner.err').inner_text())
             await pg.fill('#sender-in', 'דני')
             await pg.locator('.bar .btn').dblclick()                                                  # לחיצה כפולה
