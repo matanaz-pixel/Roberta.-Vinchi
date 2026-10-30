@@ -20,3 +20,6 @@
 
 ## בדיקת נתונים
 `node tests/lint-csv.js recipes.csv [recipes-extra.csv]` על ייצוא CSV של הטאבים.
+
+## כללי Firebase
+`database.rules.json` הוא מה שפורסם בפועל: הצמתים `bank`, `breaks`, `history` פתוחים כמו קודם (כדי לא לשבור את אפליקציית ההפסקות), והצומת `stock` מוגבל (כתיבה חד-פעמית, תאריך, פס, ערכים). `docs/rules-strict-draft.json` היא טיוטה מחמירה גם לצמתים הישנים. לא נבדקה מול האפליקציה ולא פורסמה. לפני פרסום יש לבדק ב-Rules Playground מול כל פעולה של אפליקציית ההפסקות. הערה: ב-Firebase אין `numChildren()`.
