@@ -1,0 +1,9 @@
+{
+  "name": "roberta",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/lib.test.js tests/apps-script.test.js",
+    "lint:csv": "node tests/lint-csv.js",
+    "check": "npm test"
+  }
+}

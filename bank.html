@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ניהול בנק טבחים</title>
+
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#2a2019">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&family=Frank+Ruhl+Libre:wght@500;700&family=Oswald:wght@500;600;700&display=swap');
+  :root{
+    --steel-0:#1f1712; --steel-1:#2a2019; --steel-2:#34281f;
+    --line:#4a3a2c; --amber:#d1642f; --amber-dim:#7a3d20;
+    --text:#f3ece0; --text-dim:#b8a58f; --danger:#c0392b;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; min-height:100%;
+    background:radial-gradient(circle at 50% -10%, #2f2418 0%, var(--steel-0) 55%);
+    color:var(--text); font-family:'Rubik',sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  body{ display:flex; justify-content:center; padding:24px 16px 60px; }
+  .app{ width:100%; max-width:460px; }
+  .header{ text-align:center; margin-bottom:20px; }
+  .eyebrow{ font-family:'Oswald',sans-serif; letter-spacing:.14em; font-size:12px; color:var(--text-dim); text-transform:uppercase; }
+  h1{ font-family:'Frank Ruhl Libre',serif; font-weight:700; font-size:25px; margin:4px 0 0; }
+
+  .back-btn{
+    display:block; text-align:center; margin-bottom:18px;
+    background:var(--steel-1); border:1px solid var(--line); color:var(--text-dim);
+    border-radius:12px; padding:11px; font-size:13px; text-decoration:none; font-family:'Rubik',sans-serif;
+  }
+  .back-btn:active{ transform:scale(.97); }
+
+  .add-row{
+    background:linear-gradient(180deg,var(--steel-1),var(--steel-0));
+    border:1px solid var(--line); border-radius:18px; padding:14px;
+    display:flex; gap:8px; margin-bottom:22px; position:relative; overflow:hidden;
+  }
+  .add-row::before{
+    content:""; position:absolute; top:0;left:0;right:0; height:4px;
+    background:linear-gradient(90deg,transparent,var(--amber),transparent); opacity:.6;
+  }
+  .add-row input{
+    flex:1; background:var(--steel-2); border:1px solid var(--line); border-radius:12px;
+    padding:12px 14px; color:var(--text); font-size:15px; font-family:'Rubik',sans-serif; outline:none;
+  }
+  .add-row input:focus{ border-color:var(--amber-dim); }
+  .add-row input::placeholder{ color:var(--text-dim); }
+  .add-row button{
+    flex:none; background:var(--amber); color:#2a1509; border:none; border-radius:12px;
+    padding:0 18px; font-size:20px; font-weight:700; cursor:pointer;
+  }
+  .add-row button:active{ transform:scale(.95); }
+
+  .list-title{ font-size:12px; color:var(--text-dim); letter-spacing:.1em; text-transform:uppercase; margin:0 4px 10px; }
+  .empty-note{ text-align:center; color:var(--text-dim); font-size:14px; padding:26px 10px; border:1px dashed var(--line); border-radius:14px; }
+
+  .bank-row{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    background:linear-gradient(180deg,var(--steel-1),var(--steel-0));
+    border:1px solid var(--line); border-radius:14px;
+    padding:12px 14px; margin-bottom:10px;
+  }
+  .bank-avatar{
+    flex:none; width:48px; height:48px; border-radius:50%;
+    background:var(--steel-2); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Oswald',sans-serif; font-size:16px; font-weight:600; color:var(--amber);
+    background-size:cover; background-position:center;
+    cursor:pointer; position:relative; overflow:hidden;
+  }
+  .bank-avatar .cam-badge{
+    position:absolute; bottom:-2px; left:-2px;
+    width:18px; height:18px; border-radius:50%;
+    background:var(--amber); color:#2a1509;
+    display:flex; align-items:center; justify-content:center;
+    font-size:10px; border:2px solid var(--steel-0);
+  }
+  .bank-row-name{ flex:1; min-width:90px; font-size:15px; }
+  .bank-row-tag{ font-size:11px; color:var(--text-dim); }
+  .bank-btn{
+    flex:none; background:transparent; border:1px solid var(--line); color:var(--text-dim);
+    border-radius:10px; padding:8px 12px; font-size:13px; cursor:pointer;
+  }
+  .bank-btn.danger:hover{ border-color:var(--danger); color:var(--danger); }
+  .bank-btn.share{ color:var(--amber); border-color:var(--amber-dim); }
+  .bank-btn:disabled{ opacity:.35; cursor:not-allowed; }
+  .photo-input{ display:none; }
+
+  .share-row{ flex-basis:100%; margin-top:8px; }
+  .share-box{
+    display:flex; gap:6px; align-items:center;
+    background:var(--steel-2); border:1px solid var(--line); border-radius:10px; padding:8px 10px;
+  }
+  .share-box input{
+    flex:1; background:transparent; border:none; color:var(--text-dim); font-size:11px; outline:none;
+    direction:ltr; text-align:left;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="eyebrow">ניהול מטבח</div>
+    <h1>בנק טבחים</h1>
+    <div style="font-size:11px; color:var(--amber); margin-top:4px;">רוברטה וינצ'י · כרכור</div>
+  </div>
+
+  <a class="back-btn" href="./index.html">← חזרה למסך הראשי</a>
+
+  <div class="add-row">
+    <input id="chefNameInput" type="text" placeholder="שם טבח חדש...">
+    <button id="addChefBtn">+</button>
+  </div>
+
+  <div class="list-title">כל הטבחים בבנק</div>
+  <div id="emptyNote" class="empty-note hidden">הבנק ריק - הוסף טבח ראשון למעלה</div>
+  <div id="bankList"></div>
+</div>
+
+<style>.hidden{display:none !important;}</style>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="./firebase-init.js"></script>
+<script>
+  const chefNameInput = document.getElementById('chefNameInput');
+  const addChefBtn = document.getElementById('addChefBtn');
+  const bankList = document.getElementById('bankList');
+  const emptyNote = document.getElementById('emptyNote');
+
+  let bank = {};
+  let breaksState = {};
+  let openShareId = null;
+
+  function bankArr(){ return Object.keys(bank).map(id => ({ id, ...bank[id] })); }
+  function hasActiveBreak(id){ return !!breaksState[id]; }
+
+  function initials(name){
+    const parts = name.trim().split(/\s+/);
+    if(parts.length === 1) return parts[0].slice(0,2);
+    return parts[0][0] + parts[1][0];
+  }
+
+  function resizeImageFile(file){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = ()=>{
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = ()=>{
+          const size = Math.min(img.width, img.height);
+          const sx = (img.width - size) / 2;
+          const sy = (img.height - size) / 2;
+          const OUT = 240;
+          const canvas = document.createElement('canvas');
+          canvas.width = OUT; canvas.height = OUT;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, sx, sy, size, size, 0, 0, OUT, OUT);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function triggerPhotoPick(id){
+    const input = document.getElementById('photoInput-'+id);
+    if(input) input.click();
+  }
+
+  async function onPhotoSelected(id, fileInput){
+    const file = fileInput.files && fileInput.files[0];
+    if(!file) return;
+    try{
+      const dataUrl = await resizeImageFile(file);
+      await db.ref('bank/'+id+'/photo').set(dataUrl);
+    } catch(e){ /* קובץ לא תקין - מתעלמים בשקט */ }
+    fileInput.value = '';
+  }
+
+  function removePhoto(id){
+    db.ref('bank/'+id+'/photo').remove();
+  }
+
+  addChefBtn.addEventListener('click', addChef);
+  chefNameInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') addChef(); });
+
+  function addChef(){
+    const name = chefNameInput.value.trim();
+    if(!name) return;
+    db.ref('bank').push({ name, station: '' });
+    chefNameInput.value = '';
+  }
+
+  function deleteChef(id){
+    if(hasActiveBreak(id)) return;
+    db.ref('bank/'+id).remove();
+  }
+
+  function toggleShare(id){
+    openShareId = (openShareId === id) ? null : id;
+    render();
+  }
+
+  function render(){
+    const bankChefs = bankArr();
+    bankList.innerHTML = '';
+    emptyNote.classList.toggle('hidden', bankChefs.length > 0);
+
+    bankChefs.forEach(c=>{
+      const locked = hasActiveBreak(c.id);
+      const row = document.createElement('div');
+      row.className = 'bank-row';
+      const photo = safePhoto(c.photo);
+      const avatarStyle = photo ? `style="background-image:url('${esc(photo)}')"` : '';
+      const personalUrl = window.location.origin + window.location.pathname.replace('bank.html','chef.html') + '?id=' + c.id;
+      row.innerHTML = `
+        <div class="bank-avatar" data-pick-id="${esc(c.id)}" ${avatarStyle}>
+          ${photo ? '' : esc(initials(c.name))}
+          <span class="cam-badge">📷</span>
+        </div>
+        <input type="file" id="photoInput-${esc(c.id)}" class="photo-input" accept="image/*">
+        <div class="bank-row-name">${esc(c.name)}${locked ? ' <span class="bank-row-tag">(בהפסקה כרגע)</span>' : ''}</div>
+        ${photo ? `<button class="bank-btn" data-remove-photo-id="${esc(c.id)}">הסר תמונה</button>` : ''}
+        <button class="bank-btn share" data-share-id="${esc(c.id)}">קישור אישי</button>
+        <button class="bank-btn danger" data-delete-id="${esc(c.id)}" ${locked?'disabled':''}>מחק</button>
+        ${openShareId === c.id ? `
+          <div class="share-row">
+            <div class="share-box">
+              <input type="text" readonly value="${esc(personalUrl)}" onclick="this.select()">
+              <button class="bank-btn" data-copy-id="${esc(c.id)}" data-url="${esc(personalUrl)}">העתק</button>
+            </div>
+          </div>
+        ` : ''}
+      `;
+      bankList.appendChild(row);
+    });
+
+    bankList.querySelectorAll('[data-delete-id]').forEach(btn=>{
+      btn.addEventListener('click', ()=> deleteChef(btn.dataset.deleteId));
+    });
+    bankList.querySelectorAll('[data-pick-id]').forEach(el=>{
+      el.addEventListener('click', ()=> triggerPhotoPick(el.dataset.pickId));
+    });
+    bankList.querySelectorAll('[data-remove-photo-id]').forEach(btn=>{
+      btn.addEventListener('click', ()=> removePhoto(btn.dataset.removePhotoId));
+    });
+    bankList.querySelectorAll('[data-share-id]').forEach(btn=>{
+      btn.addEventListener('click', ()=> toggleShare(btn.dataset.shareId));
+    });
+    bankList.querySelectorAll('[data-copy-id]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        try{
+          await navigator.clipboard.writeText(btn.dataset.url);
+          btn.textContent = 'הועתק ✓';
+          setTimeout(()=>{ btn.textContent = 'העתק'; }, 1500);
+        } catch(e){ /* דפדפן ללא תמיכה בהעתקה - המשתמש יכול לסמן ולהעתיק ידנית */ }
+      });
+    });
+    bankChefs.forEach(c=>{
+      const input = document.getElementById('photoInput-'+c.id);
+      if(input) input.addEventListener('change', ()=> onPhotoSelected(c.id, input));
+    });
+  }
+
+  db.ref('bank').on('value', snap=>{ bank = snap.val() || {}; render(); });
+  db.ref('breaks').on('value', snap=>{ breaksState = snap.val() || {}; render(); });
+</script>
+
+</body>
+</html>

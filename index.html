@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>הפסקות טבחים</title>
+
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#2a2019">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="הפסקות טבח">
+<link rel="apple-touch-icon" href="./icon-192.png">
+
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&family=Frank+Ruhl+Libre:wght@500;700&family=Oswald:wght@500;600;700&display=swap');
+
+  :root{
+    --steel-0:#1f1712; --steel-1:#2a2019; --steel-2:#34281f; --steel-3:#3e2f23;
+    --line:#4a3a2c; --amber:#d1642f; --amber-dim:#7a3d20;
+    --text:#f3ece0; --text-dim:#b8a58f; --danger:#c0392b; --danger-dim:#6b2318;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; min-height:100%;
+    background:radial-gradient(circle at 50% -10%, #2f2418 0%, var(--steel-0) 55%);
+    color:var(--text); font-family:'Rubik',sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  body{ display:flex; justify-content:center; padding:24px 16px 60px; }
+  .app{ width:100%; max-width:460px; }
+  .header{ text-align:center; margin-bottom:20px; }
+  .eyebrow{ font-family:'Oswald',sans-serif; letter-spacing:.14em; font-size:12px; color:var(--text-dim); text-transform:uppercase; }
+  h1{ font-family:'Frank Ruhl Libre',serif; font-weight:700; font-size:27px; margin:4px 0 0; }
+  .restaurant-tag{ font-size:11px; color:var(--amber); letter-spacing:.04em; margin-top:4px; }
+
+  .sync-tag{
+    text-align:center; font-size:11px; color:var(--text-dim); margin-bottom:14px;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .sync-dot{ width:7px; height:7px; border-radius:50%; background:var(--text-dim); }
+  .sync-dot.live{ background:#3ddc6a; }
+
+  .nav-row{ display:flex; gap:8px; margin-bottom:18px; }
+  .nav-btn{
+    flex:1; background:var(--steel-1); border:1px solid var(--line); color:var(--text-dim);
+    border-radius:12px; padding:11px; font-size:13px; cursor:pointer; text-decoration:none;
+    text-align:center; font-family:'Rubik',sans-serif; display:block;
+  }
+  .nav-btn:active{ transform:scale(.97); }
+
+  .list-title{ font-size:12px; color:var(--text-dim); letter-spacing:.1em; text-transform:uppercase; margin:0 4px 10px; }
+  .empty-note{ text-align:center; color:var(--text-dim); font-size:14px; padding:26px 10px; border:1px dashed var(--line); border-radius:14px; }
+
+  .notify-row{ text-align:center; margin-bottom:18px; }
+  .notify-btn{ background:var(--steel-1); border:1px solid var(--line); color:var(--text-dim); border-radius:10px; padding:9px 16px; font-size:13px; cursor:pointer; }
+  .notify-btn.granted{ color:var(--amber); border-color:var(--amber-dim); }
+
+  .cards{ display:flex; flex-direction:column; gap:12px; }
+
+  .card{
+    background:linear-gradient(180deg,var(--steel-1),var(--steel-0));
+    border:1px solid var(--line); border-radius:16px; padding:14px 16px;
+    box-shadow:0 12px 26px -16px rgba(0,0,0,.5);
+  }
+  .card.is-done{ border-color:var(--danger-dim); background:linear-gradient(180deg,#2a1a17,var(--steel-0)); }
+  .card.is-off{ opacity:.55; }
+
+  .card-row{ display:flex; align-items:center; gap:12px; }
+
+  .station-select{
+    flex:none; width:84px;
+    background:var(--steel-2); border:1px solid var(--line); color:var(--text);
+    border-radius:10px; padding:8px 6px; font-size:11px; font-family:'Rubik',sans-serif;
+    cursor:pointer;
+  }
+  .station-select:disabled{ opacity:.4; cursor:not-allowed; }
+
+  .ring-mini{ position:relative; width:52px; height:52px; flex:none; }
+  .ring-mini svg{ transform:rotate(-90deg); }
+  .ring-mini-bg{ fill:none; stroke:var(--steel-2); stroke-width:6; }
+  .ring-mini-fg{ fill:none; stroke:var(--amber); stroke-width:6; stroke-linecap:round; }
+  .ring-mini-fg.overtime{ stroke:var(--danger); animation:glow 1.4s ease-in-out infinite; }
+  @keyframes glow{ 0%,100%{ opacity:1; } 50%{ opacity:.55; } }
+  .ring-mini-num{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:'Oswald',sans-serif; font-size:10px; font-variant-numeric:tabular-nums;
+  }
+  .ring-mini-num.overtime{ color:var(--danger); font-weight:700; }
+
+  .avatar{
+    width:64px; height:64px; flex:none; border-radius:50%;
+    background:var(--steel-2); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Oswald',sans-serif; font-size:20px; font-weight:600; color:var(--amber);
+    overflow:hidden;
+  }
+  .avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .card.is-off .avatar{ color:var(--text-dim); }
+
+  .card-body{ flex:1; min-width:0; cursor:pointer; }
+  .card-body:active{ opacity:.75; }
+  .card-title{ font-size:15px; font-weight:600; margin-bottom:2px; }
+  .card-sub{ font-size:12px; color:var(--text-dim); }
+  .card.is-done .card-sub{ color:var(--danger); }
+
+  .start-btn{
+    flex:none; background:var(--amber); color:#2a1509; border:none; font-weight:600;
+    border-radius:10px; padding:9px 14px; font-size:13px; cursor:pointer;
+  }
+  .start-btn:active{ transform:scale(.96); }
+
+  .card-action{
+    flex:none; border:1px solid var(--line); background:transparent; color:var(--text-dim);
+    border-radius:10px; padding:9px 14px; font-size:13px; cursor:pointer;
+  }
+  .card-action:hover{ border-color:var(--danger); color:var(--danger); }
+  .card.is-done .card-action.ack-btn{
+    background:var(--danger); color:#fff; border:none; font-weight:600;
+    animation:pulseBtn 1s ease-in-out infinite;
+  }
+  .actions-group{ display:flex; gap:8px; flex:none; }
+  .muted-tag{
+    font-size:11px; color:var(--text-dim); align-self:center;
+    border:1px solid var(--line); border-radius:10px; padding:8px 10px;
+  }
+  @keyframes pulseBtn{ 0%,100%{ box-shadow:0 0 0 0 rgba(192,57,43,.5); } 50%{ box-shadow:0 0 0 10px rgba(192,57,43,0); } }
+
+  .duration-row{ display:flex; gap:10px; margin-top:12px; padding-top:12px; border-top:1px solid var(--line); }
+  .duration-btn{ flex:1; background:var(--steel-2); border:1px solid var(--line); border-radius:12px; padding:12px 6px; color:var(--text); cursor:pointer; text-align:center; }
+  .duration-btn:hover{ border-color:var(--amber-dim); background:#2b333a; }
+  .duration-btn:active{ transform:scale(.95); }
+  .duration-num{ font-family:'Oswald',sans-serif; font-size:20px; font-weight:700; color:var(--amber); display:block; line-height:1; }
+  .duration-label{ font-size:11px; color:var(--text-dim); margin-top:3px; display:block; }
+  .duration-cancel{ flex:none; background:transparent; border:1px solid var(--line); color:var(--text-dim); border-radius:12px; padding:0 16px; cursor:pointer; }
+
+  .wake-note{ text-align:center; font-size:11px; color:var(--text-dim); margin-top:18px; opacity:.7; }
+
+  .hidden{ display:none !important; }
+</style>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="./firebase-init.js"></script>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="eyebrow">ניהול מטבח</div>
+    <h1>הפסקות טבחים</h1>
+    <div class="restaurant-tag">רוברטה וינצ'י · כרכור</div>
+  </div>
+
+  <div class="sync-tag"><span class="sync-dot" id="syncDot"></span><span id="syncText">מתחבר...</span></div>
+
+  <div class="nav-row">
+    <a class="nav-btn" href="./bank.html">ניהול בנק טבחים</a>
+  </div>
+
+  <div class="notify-row">
+    <button id="notifyBtn" class="notify-btn">אפשר התראות מערכת</button>
+  </div>
+
+  <div id="bankEmptyNote" class="empty-note hidden">הבנק ריק - היכנס ל"ניהול בנק טבחים" והוסף טבחים</div>
+
+  <div id="cardsWrapper"></div>
+
+  <div class="wake-note">המסך יישאר דלוק כל עוד יש הפסקה פעילה. הנתונים מסונכרנים בזמן אמת בין כל המכשירים.</div>
+</div>
+
+<script>
+  const bankEmptyNote = document.getElementById('bankEmptyNote');
+  const cardsWrapper = document.getElementById('cardsWrapper');
+  const notifyBtn = document.getElementById('notifyBtn');
+  const syncDot = document.getElementById('syncDot');
+  const syncText = document.getElementById('syncText');
+
+  const STATIONS = [
+    { key: 'tabun', label: 'טאבון' },
+    { key: 'cold', label: 'פס קר' },
+    { key: 'hot', label: 'פס חם' },
+    { key: 'wash', label: 'שטיפה' }
+  ];
+  function stationLabel(key){
+    const s = STATIONS.find(x=>x.key===key);
+    return s ? s.label : 'לא במשמרת';
+  }
+
+  const RADIUS_MINI = 22;
+  const CIRC_MINI = 2 * Math.PI * RADIUS_MINI;
+  const MAX_HISTORY = 500;
+
+  // bank/breaks מגיעים עכשיו מ-Firebase כאובייקטים { [id]: {...} }
+  let bank = {};
+  let breaksState = {};
+  let choosingIds = new Set();
+  let prevMode = {};
+  let liveRefs = {};
+  let beepTimers = {};
+  let lastNotifUpdate = {};
+
+  let audioCtx = null;
+  let wakeLock = null;
+
+  function bankArr(){ return Object.keys(bank).map(id => ({ id, ...bank[id] })); }
+  function findChef(id){ return bank[id] ? { id, ...bank[id] } : null; }
+
+  function initials(name){
+    const parts = name.trim().split(/\s+/);
+    if(parts.length === 1) return parts[0].slice(0,2);
+    return parts[0][0] + parts[1][0];
+  }
+
+  function hasActiveBreak(id){ return !!breaksState[id]; }
+
+  function setStation(id, station){
+    if(hasActiveBreak(id)) return; // לא ניתן לשנות משמרת באמצע הפסקה פעילה
+    db.ref('bank/'+id+'/station').set(station);
+  }
+
+  function computeMode(id){
+    if(choosingIds.has(id)) return 'choosing';
+    const b = breaksState[id];
+    if(!b) return 'idle';
+    return (Date.now() >= b.endAt) ? 'done' : 'running';
+  }
+
+  function openChoice(id){
+    if(hasActiveBreak(id)) return;
+    choosingIds.add(id);
+    renderAll();
+  }
+  function closeChoice(id){
+    choosingIds.delete(id);
+    renderAll();
+  }
+
+  function startBreak(id, minutes){
+    ensureAudio();
+    choosingIds.delete(id);
+    db.ref('breaks/'+id).set({ minutes, endAt: Date.now() + minutes*60000, muted: false });
+    const c = findChef(id);
+    if(c) updateLiveNotification(c, 'running', `${minutes} דקות - התחיל עכשיו`, true);
+  }
+
+  function logHistoryEntry(entry){
+    db.ref('history').push(entry);
+  }
+
+  function cancelBreak(id){
+    const b = breaksState[id];
+    const c = findChef(id);
+    if(b && c){
+      logHistoryEntry({
+        chefId: id, chefName: c.name, minutes: b.minutes,
+        startedAt: b.endAt - b.minutes*60000, finishedAt: Date.now(),
+        status: 'cancelled', overtimeSeconds: 0
+      });
+    }
+    stopBeepFor(id);
+    closeLiveNotification(id);
+    db.ref('breaks/'+id).remove();
+  }
+
+  function acknowledgeDone(id){
+    const b = breaksState[id];
+    const c = findChef(id);
+    if(b && c){
+      const overtimeSeconds = Math.max(0, Math.round((Date.now() - b.endAt)/1000));
+      logHistoryEntry({
+        chefId: id, chefName: c.name, minutes: b.minutes,
+        startedAt: b.endAt - b.minutes*60000, finishedAt: Date.now(),
+        status: 'completed', overtimeSeconds
+      });
+    }
+    stopBeepFor(id);
+    closeLiveNotification(id);
+    db.ref('breaks/'+id).remove();
+  }
+
+  function muteBreak(id){
+    stopBeepFor(id);
+    db.ref('breaks/'+id+'/muted').set(true);
+  }
+
+  function renderAll(){
+    const chefs = bankArr();
+    liveRefs = {};
+
+    bankEmptyNote.classList.toggle('hidden', chefs.length > 0);
+    cardsWrapper.classList.toggle('hidden', chefs.length === 0);
+    cardsWrapper.innerHTML = '';
+
+    const groups = STATIONS.map(s => ({ key: s.key, label: s.label, chefs: chefs.filter(c=>c.station===s.key) }));
+    groups.push({ key: '', label: 'לא במשמרת', chefs: chefs.filter(c=>!c.station) });
+
+    groups.forEach((group, idx)=>{
+      const section = document.createElement('div');
+      if(idx > 0) section.style.marginTop = '22px';
+
+      const title = document.createElement('div');
+      title.className = 'list-title';
+      title.textContent = group.label;
+      section.appendChild(title);
+
+      if(group.chefs.length === 0){
+        const note = document.createElement('div');
+        note.className = 'empty-note';
+        note.textContent = group.key ? `אין כרגע אף אחד ב${group.label}` : 'כולם במשמרת';
+        section.appendChild(note);
+      } else {
+        const cardsDiv = document.createElement('div');
+        cardsDiv.className = 'cards';
+        group.chefs.forEach(c=>{
+          const mode = c.station ? computeMode(c.id) : 'off';
+          prevMode[c.id] = mode;
+          cardsDiv.appendChild(buildCard(c, mode));
+        });
+        section.appendChild(cardsDiv);
+      }
+
+      cardsWrapper.appendChild(section);
+    });
+
+    bindEvents();
+  }
+
+  function buildCard(c, mode){
+    const card = document.createElement('div');
+    card.className = 'card' + (mode==='done' ? ' is-done' : '') + (mode==='off' ? ' is-off' : '');
+    card.dataset.chefId = c.id;
+
+    const stationOptions = STATIONS.map(s =>
+      `<option value="${s.key}" ${c.station===s.key?'selected':''}>${s.label}</option>`
+    ).join('');
+    const selectHtml = `
+      <select class="station-select" data-station-id="${esc(c.id)}" ${hasActiveBreak(c.id)?'disabled':''}>
+        <option value="" ${!c.station?'selected':''}>לא במשמרת</option>
+        ${stationOptions}
+      </select>`;
+
+    let avatarHtml, subText, actionHtml = '';
+
+    if(mode === 'running' || mode === 'done'){
+      const b = breaksState[c.id];
+      let numText, offset, ringClass='', numClass='';
+      if(mode === 'running'){
+        const remaining = Math.max(0, Math.round((b.endAt - Date.now())/1000));
+        const m = Math.floor(remaining/60).toString().padStart(2,'0');
+        const s = Math.floor(remaining%60).toString().padStart(2,'0');
+        numText = m+':'+s;
+        offset = CIRC_MINI * (1 - remaining / (b.minutes*60));
+        subText = `בהפסקה (${Number(b.minutes) || 0} דק')`;
+      } else {
+        const overtime = Math.max(0, Math.round((Date.now() - b.endAt)/1000));
+        const m = Math.floor(overtime/60).toString().padStart(2,'0');
+        const s = Math.floor(overtime%60).toString().padStart(2,'0');
+        numText = '+'+m+':'+s;
+        offset = 0;
+        ringClass = 'overtime'; numClass = 'overtime';
+        subText = 'הזמן נגמר - חורג';
+      }
+      avatarHtml = `
+        <div class="ring-mini">
+          <svg width="52" height="52">
+            <circle class="ring-mini-bg" cx="26" cy="26" r="${RADIUS_MINI}"></circle>
+            <circle class="ring-mini-fg ${ringClass}" cx="26" cy="26" r="${RADIUS_MINI}"
+              stroke-dasharray="${CIRC_MINI}" stroke-dashoffset="${offset}"></circle>
+          </svg>
+          <div class="ring-mini-num ${numClass}">${numText}</div>
+        </div>`;
+      actionHtml = mode==='done'
+        ? (b.muted
+            ? `<div class="actions-group"><span class="muted-tag">מושתק</span><button class="card-action ack-btn" data-id="${esc(c.id)}" data-action="ack">אישור</button></div>`
+            : `<div class="actions-group"><button class="card-action" data-id="${esc(c.id)}" data-action="mute">השתק</button><button class="card-action ack-btn" data-id="${esc(c.id)}" data-action="ack">אישור</button></div>`)
+        : `<button class="card-action" data-id="${esc(c.id)}" data-action="cancel">בטל</button>`;
+    } else {
+      avatarHtml = safePhoto(c.photo)
+        ? `<div class="avatar"><img src="${esc(safePhoto(c.photo))}" alt=""></div>`
+        : `<div class="avatar">${esc(initials(c.name))}</div>`;
+      if(mode === 'off') subText = 'לא במשמרת היום';
+      else if(mode === 'choosing') subText = 'בחר משך הפסקה';
+      else subText = 'זמין - לחץ על ההפסקה כדי להתחיל';
+      if(mode === 'idle'){
+        actionHtml = `<button class="start-btn" data-open-id="${esc(c.id)}">הפסקה</button>`;
+      }
+    }
+
+    card.innerHTML = `
+      <div class="card-row">
+        ${selectHtml}
+        ${avatarHtml}
+        <div class="card-body" data-history-id="${esc(c.id)}">
+          <div class="card-title">${esc(c.name)}</div>
+          <div class="card-sub">${subText}</div>
+        </div>
+        ${actionHtml}
+      </div>
+      ${mode === 'choosing' ? `
+        <div class="duration-row">
+          <button class="duration-btn" data-start-id="${esc(c.id)}" data-min="20">
+            <span class="duration-num">20</span><span class="duration-label">דקות</span>
+          </button>
+          <button class="duration-btn" data-start-id="${esc(c.id)}" data-min="30">
+            <span class="duration-num">30</span><span class="duration-label">דקות</span>
+          </button>
+          <button class="duration-cancel" data-close-id="${esc(c.id)}">ביטול</button>
+        </div>
+      ` : ''}
+    `;
+
+    if(mode === 'running' || mode === 'done'){
+      liveRefs[c.id] = {
+        ringFg: card.querySelector('.ring-mini-fg'),
+        numEl: card.querySelector('.ring-mini-num'),
+        subEl: card.querySelector('.card-sub')
+      };
+    }
+    return card;
+  }
+
+  function bindEvents(){
+    cardsWrapper.querySelectorAll('[data-station-id]').forEach(sel=>{
+      sel.addEventListener('click', (e)=> e.stopPropagation());
+      sel.addEventListener('change', (e)=>{ e.stopPropagation(); setStation(sel.dataset.stationId, sel.value); });
+    });
+    cardsWrapper.querySelectorAll('[data-history-id]').forEach(el=>{
+      el.addEventListener('click', ()=>{ window.location.href = 'history.html?id=' + el.dataset.historyId; });
+    });
+    cardsWrapper.querySelectorAll('[data-open-id]').forEach(el=>{
+      el.addEventListener('click', ()=> openChoice(el.dataset.openId));
+    });
+    cardsWrapper.querySelectorAll('[data-start-id]').forEach(el=>{
+      el.addEventListener('click', (e)=>{ e.stopPropagation(); startBreak(el.dataset.startId, parseInt(el.dataset.min,10)); });
+    });
+    cardsWrapper.querySelectorAll('[data-close-id]').forEach(el=>{
+      el.addEventListener('click', (e)=>{ e.stopPropagation(); closeChoice(el.dataset.closeId); });
+    });
+    cardsWrapper.querySelectorAll('.card-action').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        if(btn.dataset.action === 'cancel') cancelBreak(id);
+        else if(btn.dataset.action === 'mute') muteBreak(id);
+        else acknowledgeDone(id);
+      });
+    });
+  }
+
+  function tick(){
+    let needsRebuild = false;
+
+    bankArr().forEach(c=>{
+      const mode = c.station ? computeMode(c.id) : 'off';
+      const prev = prevMode[c.id];
+
+      if(mode !== prev){
+        if(prev === 'running' && mode === 'done'){
+          fireDoneAlert(c.name);
+          startBeepFor(c.id);
+        }
+        needsRebuild = true;
+        return;
+      }
+
+      if((mode === 'running' || mode === 'done') && liveRefs[c.id]){
+        const b = breaksState[c.id];
+        const refs = liveRefs[c.id];
+        let bodyText;
+        if(mode === 'running'){
+          const remaining = Math.max(0, Math.round((b.endAt - Date.now())/1000));
+          const m = Math.floor(remaining/60).toString().padStart(2,'0');
+          const s = Math.floor(remaining%60).toString().padStart(2,'0');
+          refs.numEl.textContent = m+':'+s;
+          refs.ringFg.style.strokeDashoffset = CIRC_MINI * (1 - remaining / (b.minutes*60));
+          bodyText = `נותרו ${m}:${s}`;
+        } else {
+          const overtime = Math.max(0, Math.round((Date.now() - b.endAt)/1000));
+          const m = Math.floor(overtime/60).toString().padStart(2,'0');
+          const s = Math.floor(overtime%60).toString().padStart(2,'0');
+          refs.numEl.textContent = '+'+m+':'+s;
+          bodyText = `חורג ב-${m}:${s}`;
+        }
+        const now = Date.now();
+        if(!lastNotifUpdate[c.id] || now - lastNotifUpdate[c.id] > 15000){
+          lastNotifUpdate[c.id] = now;
+          updateLiveNotification(c, mode, bodyText, false);
+        }
+      }
+    });
+
+    if(needsRebuild) renderAll();
+  }
+
+  // ---------- אודיו ----------
+  function ensureAudio(){
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+  }
+  function beepOnce(){
+    ensureAudio();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'square'; osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.3, audioCtx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+  }
+  function startBeepFor(id){
+    if(beepTimers[id]) return;
+    const loop = ()=>{
+      if(!breaksState[id]){ delete beepTimers[id]; return; }
+      beepOnce();
+      beepTimers[id] = setTimeout(loop, 700);
+    };
+    loop();
+  }
+  function stopBeepFor(id){
+    if(beepTimers[id]){ clearTimeout(beepTimers[id]); delete beepTimers[id]; }
+  }
+
+  // ---------- התראות ----------
+  async function showAppNotification(title, options){
+    if(!('Notification' in window) || Notification.permission !== 'granted') return;
+    try{
+      if('serviceWorker' in navigator){
+        const reg = await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')), 2000))
+        ]);
+        await reg.showNotification(title, options);
+        return;
+      }
+    } catch(e){}
+    try{ new Notification(title, options); } catch(e){}
+  }
+  async function closeAppNotification(tag){
+    try{
+      if('serviceWorker' in navigator){
+        const reg = await navigator.serviceWorker.ready;
+        const notifs = await reg.getNotifications({ tag });
+        notifs.forEach(n=>n.close());
+      }
+    } catch(e){}
+  }
+  function refreshNotifyBtn(){
+    if(!('Notification' in window)){ notifyBtn.style.display = 'none'; return; }
+    if(Notification.permission === 'granted'){
+      notifyBtn.textContent = '✓ התראות פעילות';
+      notifyBtn.classList.add('granted');
+    } else if(Notification.permission === 'denied'){
+      notifyBtn.textContent = 'התראות חסומות בדפדפן';
+      notifyBtn.disabled = true;
+    } else {
+      notifyBtn.textContent = 'אפשר התראות מערכת';
+      notifyBtn.classList.remove('granted');
+    }
+  }
+  notifyBtn.addEventListener('click', async ()=>{
+    if(!('Notification' in window)) return;
+    try{ await Notification.requestPermission(); } catch(e){}
+    refreshNotifyBtn();
+  });
+
+  function fireDoneAlert(chefName){
+    showAppNotification('ההפסקה הסתיימה', {
+      body: `${chefName} - הזמן נגמר`,
+      tag: 'chef-break-'+chefName,
+      renotify: true,
+      requireInteraction: true,
+      vibrate: [250,120,250,120,250]
+    });
+    if('vibrate' in navigator){ try{ navigator.vibrate([250,120,250,120,250]); } catch(e){} }
+  }
+  function updateLiveNotification(chef, mode, bodyText, loud){
+    showAppNotification('הפסקה: '+chef.name, {
+      body: bodyText, tag: 'chef-live-'+chef.id, silent: !loud, renotify: !!loud
+    });
+  }
+  function closeLiveNotification(id){
+    closeAppNotification('chef-live-'+id);
+    delete lastNotifUpdate[id];
+  }
+
+  // ---------- נעילת מסך ----------
+  async function updateWakeLock(){
+    const activeCount = Object.keys(breaksState).length;
+    try{
+      if(activeCount > 0){
+        if(!wakeLock && 'wakeLock' in navigator){
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', ()=>{ wakeLock = null; });
+        }
+      } else if(wakeLock){
+        await wakeLock.release(); wakeLock = null;
+      }
+    } catch(e){}
+  }
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible' && Object.keys(breaksState).length > 0){
+      updateWakeLock();
+      Object.keys(breaksState).forEach(id=>{
+        if(computeMode(id) === 'done' && !breaksState[id].muted) startBeepFor(id);
+      });
+    }
+  });
+
+  // ---------- חיבור ל-Firebase בזמן אמת ----------
+  db.ref('.info/connected').on('value', snap=>{
+    const connected = snap.val() === true;
+    syncDot.classList.toggle('live', connected);
+    syncText.textContent = connected ? 'מחובר - מסונכרן בזמן אמת' : 'מתחבר...';
+  });
+
+  db.ref('bank').on('value', snap=>{
+    bank = snap.val() || {};
+    bankArr().forEach(c=>{ if(!(c.id in prevMode)) prevMode[c.id] = c.station ? computeMode(c.id) : 'off'; });
+    renderAll();
+  });
+
+  db.ref('breaks').on('value', snap=>{
+    breaksState = snap.val() || {};
+    Object.keys(breaksState).forEach(id=>{
+      if(computeMode(id) === 'done' && !breaksState[id].muted) startBeepFor(id);
+    });
+    renderAll();
+    updateWakeLock();
+  });
+
+  refreshNotifyBtn();
+  document.body.addEventListener('click', ensureAudio, { once:true });
+
+  setInterval(tick, 1000);
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    });
+  }
+</script>
+
+</body>
+</html>

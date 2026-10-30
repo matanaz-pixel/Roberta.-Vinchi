@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ההפסקה שלי</title>
+
+<meta name="theme-color" content="#2a2019">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ההפסקה שלי">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&family=Frank+Ruhl+Libre:wght@500;700&family=Oswald:wght@500;600;700&display=swap');
+  :root{
+    --steel-0:#1f1712; --steel-1:#2a2019; --steel-2:#34281f;
+    --line:#4a3a2c; --amber:#d1642f; --amber-dim:#7a3d20;
+    --text:#f3ece0; --text-dim:#b8a58f; --danger:#c0392b;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; min-height:100%;
+    background:radial-gradient(circle at 50% -10%, #2f2418 0%, var(--steel-0) 55%);
+    color:var(--text); font-family:'Rubik',sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  body{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-height:100vh; padding:24px 16px;
+  }
+  .restaurant-tag{ font-size:12px; color:var(--amber); letter-spacing:.04em; margin-bottom:22px; }
+  .avatar{
+    width:110px; height:110px; border-radius:50%;
+    background:var(--steel-2); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Oswald',sans-serif; font-size:38px; font-weight:600; color:var(--amber);
+    overflow:hidden; margin-bottom:18px;
+  }
+  .avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+  .name{ font-family:'Frank Ruhl Libre',serif; font-size:25px; font-weight:700; margin-bottom:30px; }
+
+  .ring-wrap{ position:relative; width:260px; height:260px; margin-bottom:24px; }
+  svg{ transform:rotate(-90deg); }
+  .ring-bg{ fill:none; stroke:var(--steel-2); stroke-width:10; }
+  .ring-fg{ fill:none; stroke:var(--amber); stroke-width:10; stroke-linecap:round; transition:stroke-dashoffset 1s linear; }
+  .ring-fg.overtime{ stroke:var(--danger); animation:glow 1.4s ease-in-out infinite; }
+  @keyframes glow{ 0%,100%{ opacity:1; } 50%{ opacity:.5; } }
+  .ring-center{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:6px;
+  }
+  .time{ font-family:'Oswald',sans-serif; font-size:52px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .time.overtime{ color:var(--danger); }
+  .status-tag{ font-size:13px; color:var(--text-dim); }
+  .status-tag.overtime{ color:var(--danger); }
+
+  .idle-box{ text-align:center; color:var(--text-dim); font-size:15px; max-width:280px; line-height:1.6; }
+
+  .mute-btn{
+    background:transparent; border:1px solid var(--line); color:var(--text-dim);
+    border-radius:12px; padding:12px 24px; font-size:14px; cursor:pointer; margin-top:6px;
+  }
+  .mute-btn:active{ transform:scale(.96); }
+
+  .notify-btn{
+    background:var(--steel-1); border:1px solid var(--line); color:var(--text-dim);
+    border-radius:10px; padding:9px 16px; font-size:13px; cursor:pointer; margin-top:22px;
+  }
+  .notify-btn.granted{ color:var(--amber); border-color:var(--amber-dim); }
+
+  .hidden{ display:none !important; }
+</style>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="./firebase-init.js"></script>
+</head>
+<body>
+
+<div id="notFoundBox" class="idle-box hidden">הטבח הזה לא נמצא בבנק. יש לבדוק את הקישור עם המנהל.</div>
+
+<div id="content" class="hidden">
+  <div class="restaurant-tag">רוברטה וינצ'י · כרכור</div>
+  <div class="avatar" id="avatar"></div>
+  <div class="name" id="chefName"></div>
+
+  <div id="ringSection" class="hidden">
+    <div class="ring-wrap">
+      <svg width="260" height="260">
+        <circle class="ring-bg" cx="130" cy="130" r="115"></circle>
+        <circle id="ringFg" class="ring-fg" cx="130" cy="130" r="115"></circle>
+      </svg>
+      <div class="ring-center">
+        <div id="timeDisplay" class="time">20:00</div>
+        <div id="statusTag" class="status-tag">בהפסקה כרגע</div>
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <button id="muteBtn" class="mute-btn hidden">השתק צפצוף</button>
+    </div>
+  </div>
+
+  <div id="idleSection" class="idle-box hidden">
+    את/ה לא בהפסקה כרגע.<br>ברגע שהמנהל/ת יתחיל/תתחיל לך הפסקה, היא תופיע כאן אוטומטית עם ספירה לאחור.
+  </div>
+
+  <button id="notifyBtn" class="notify-btn">אפשר התראות בטלפון</button>
+</div>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const chefId = params.get('id');
+
+  const notFoundBox = document.getElementById('notFoundBox');
+  const content = document.getElementById('content');
+  const avatarEl = document.getElementById('avatar');
+  const chefNameEl = document.getElementById('chefName');
+  const ringSection = document.getElementById('ringSection');
+  const idleSection = document.getElementById('idleSection');
+  const ringFg = document.getElementById('ringFg');
+  const timeDisplay = document.getElementById('timeDisplay');
+  const statusTag = document.getElementById('statusTag');
+  const muteBtn = document.getElementById('muteBtn');
+  const notifyBtn = document.getElementById('notifyBtn');
+
+  const RADIUS = 115;
+  const CIRC = 2 * Math.PI * RADIUS;
+  ringFg.style.strokeDasharray = CIRC;
+
+  function initials(name){
+    const parts = name.trim().split(/\s+/);
+    if(parts.length === 1) return parts[0].slice(0,2);
+    return parts[0][0] + parts[1][0];
+  }
+
+  let chef = null;
+  let breakData = null;
+  let prevStatus = 'idle';
+  let beepTimer = null;
+  let audioCtx = null;
+  let wakeLock = null;
+
+  if(!chefId){
+    notFoundBox.classList.remove('hidden');
+  } else {
+    db.ref('bank/'+chefId).on('value', snap=>{
+      const val = snap.val();
+      if(!val){
+        content.classList.add('hidden');
+        notFoundBox.classList.remove('hidden');
+        return;
+      }
+      chef = val;
+      notFoundBox.classList.add('hidden');
+      content.classList.remove('hidden');
+      chefNameEl.textContent = chef.name;
+      const ph = safePhoto(chef.photo);
+      if(ph){ const im = document.createElement('img'); im.src = ph; im.alt = ''; avatarEl.replaceChildren(im); }
+      else avatarEl.textContent = initials(chef.name);
+      render();
+    });
+
+    db.ref('breaks/'+chefId).on('value', snap=>{
+      breakData = snap.val();
+      render();
+      updateWakeLock();
+    });
+  }
+
+  function computeStatus(){
+    if(!breakData) return 'idle';
+    return Date.now() >= breakData.endAt ? 'done' : 'running';
+  }
+
+  function render(){
+    if(!chef) return;
+    const status = computeStatus();
+
+    if(status === 'idle'){
+      ringSection.classList.add('hidden');
+      idleSection.classList.remove('hidden');
+    } else {
+      idleSection.classList.add('hidden');
+      ringSection.classList.remove('hidden');
+
+      if(status === 'running'){
+        const remaining = Math.max(0, Math.round((breakData.endAt - Date.now())/1000));
+        const m = Math.floor(remaining/60).toString().padStart(2,'0');
+        const s = Math.floor(remaining%60).toString().padStart(2,'0');
+        timeDisplay.textContent = m+':'+s;
+        timeDisplay.classList.remove('overtime');
+        statusTag.textContent = `בהפסקה כרגע (${breakData.minutes} דק')`;
+        statusTag.classList.remove('overtime');
+        ringFg.classList.remove('overtime');
+        ringFg.style.strokeDashoffset = CIRC * (1 - remaining/(breakData.minutes*60));
+        muteBtn.classList.add('hidden');
+      } else {
+        const overtime = Math.max(0, Math.round((Date.now() - breakData.endAt)/1000));
+        const m = Math.floor(overtime/60).toString().padStart(2,'0');
+        const s = Math.floor(overtime%60).toString().padStart(2,'0');
+        timeDisplay.textContent = '+'+m+':'+s;
+        timeDisplay.classList.add('overtime');
+        statusTag.textContent = 'הזמן נגמר - נא לחזור';
+        statusTag.classList.add('overtime');
+        ringFg.classList.add('overtime');
+        ringFg.style.strokeDashoffset = 0;
+        muteBtn.classList.toggle('hidden', !!breakData.muted);
+      }
+    }
+
+    if(prevStatus === 'running' && status === 'done'){
+      fireDoneAlert();
+      startBeep();
+    }
+    if(status !== 'done'){
+      stopBeep();
+    } else if(breakData.muted){
+      stopBeep();
+    }
+    prevStatus = status;
+  }
+
+  setInterval(render, 1000);
+
+  muteBtn.addEventListener('click', ()=>{
+    stopBeep();
+    db.ref('breaks/'+chefId+'/muted').set(true);
+  });
+
+  // ---------- אודיו ----------
+  function ensureAudio(){
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+  }
+  function beepOnce(){
+    ensureAudio();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'square'; osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.3, audioCtx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+  }
+  function startBeep(){
+    if(beepTimer) return;
+    const loop = ()=>{
+      const status = computeStatus();
+      if(status !== 'done' || (breakData && breakData.muted)){ beepTimer = null; return; }
+      beepOnce();
+      beepTimer = setTimeout(loop, 700);
+    };
+    loop();
+  }
+  function stopBeep(){
+    if(beepTimer){ clearTimeout(beepTimer); beepTimer = null; }
+  }
+  document.body.addEventListener('click', ensureAudio, { once:true });
+
+  // ---------- התראות ----------
+  async function showAppNotification(title, options){
+    if(!('Notification' in window) || Notification.permission !== 'granted') return;
+    try{
+      if('serviceWorker' in navigator){
+        const reg = await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')), 2000))
+        ]);
+        await reg.showNotification(title, options);
+        return;
+      }
+    } catch(e){}
+    try{ new Notification(title, options); } catch(e){}
+  }
+  function fireDoneAlert(){
+    showAppNotification('ההפסקה שלך הסתיימה', {
+      body: 'הזמן נגמר - נא לחזור למטבח',
+      tag: 'my-break-done',
+      renotify: true,
+      requireInteraction: true,
+      vibrate: [250,120,250,120,250]
+    });
+    if('vibrate' in navigator){ try{ navigator.vibrate([250,120,250,120,250]); } catch(e){} }
+  }
+  function refreshNotifyBtn(){
+    if(!('Notification' in window)){ notifyBtn.style.display = 'none'; return; }
+    if(Notification.permission === 'granted'){
+      notifyBtn.textContent = '✓ התראות פעילות';
+      notifyBtn.classList.add('granted');
+    } else if(Notification.permission === 'denied'){
+      notifyBtn.textContent = 'התראות חסומות בדפדפן';
+      notifyBtn.disabled = true;
+    } else {
+      notifyBtn.textContent = 'אפשר התראות בטלפון';
+    }
+  }
+  notifyBtn.addEventListener('click', async ()=>{
+    if(!('Notification' in window)) return;
+    try{ await Notification.requestPermission(); } catch(e){}
+    refreshNotifyBtn();
+  });
+  refreshNotifyBtn();
+
+  // ---------- נעילת מסך ----------
+  async function updateWakeLock(){
+    try{
+      if(breakData){
+        if(!wakeLock && 'wakeLock' in navigator){
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', ()=>{ wakeLock = null; });
+        }
+      } else if(wakeLock){
+        await wakeLock.release(); wakeLock = null;
+      }
+    } catch(e){}
+  }
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible' && breakData) updateWakeLock();
+  });
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    });
+  }
+</script>
+
+</body>
+</html>

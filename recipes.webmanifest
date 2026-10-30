@@ -1,0 +1,18 @@
+{
+  "name": "ספר מתכונים - רוברטה וינצ'י",
+  "short_name": "ספר מתכונים",
+  "description": "ספר המתכונים של המטבח",
+  "start_url": "./recipes.html",
+  "scope": "./recipes.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fbf8f2",
+  "theme_color": "#023305",
+  "dir": "rtl",
+  "lang": "he",
+  "icons": [
+    { "src": "roberta-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "roberta-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "roberta-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

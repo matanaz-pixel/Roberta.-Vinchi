@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>היסטוריית הפסקות</title>
+
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#2a2019">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&family=Frank+Ruhl+Libre:wght@500;700&family=Oswald:wght@500;600;700&display=swap');
+  :root{
+    --steel-0:#1f1712; --steel-1:#2a2019; --steel-2:#34281f;
+    --line:#4a3a2c; --amber:#d1642f; --amber-dim:#7a3d20;
+    --text:#f3ece0; --text-dim:#b8a58f; --danger:#c0392b;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; min-height:100%;
+    background:radial-gradient(circle at 50% -10%, #232a30 0%, var(--steel-0) 55%);
+    color:var(--text); font-family:'Rubik',sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  body{ display:flex; justify-content:center; padding:24px 16px 60px; }
+  .app{ width:100%; max-width:460px; }
+
+  .back-btn{
+    display:block; text-align:center; margin-bottom:18px;
+    background:var(--steel-1); border:1px solid var(--line); color:var(--text-dim);
+    border-radius:12px; padding:11px; font-size:13px; text-decoration:none; font-family:'Rubik',sans-serif;
+  }
+  .back-btn:active{ transform:scale(.97); }
+
+  .profile{
+    display:flex; align-items:center; gap:14px;
+    background:linear-gradient(180deg,var(--steel-1),var(--steel-0));
+    border:1px solid var(--line); border-radius:18px; padding:16px;
+    margin-bottom:20px; position:relative; overflow:hidden;
+  }
+  .profile::before{
+    content:""; position:absolute; top:0;left:0;right:0; height:4px;
+    background:linear-gradient(90deg,transparent,var(--amber),transparent); opacity:.6;
+  }
+  .profile-avatar{
+    width:64px; height:64px; flex:none; border-radius:50%;
+    background:var(--steel-2); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Oswald',sans-serif; font-size:20px; font-weight:600; color:var(--amber);
+    overflow:hidden;
+  }
+  .profile-avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .profile-name{ font-family:'Frank Ruhl Libre',serif; font-size:21px; font-weight:700; }
+  .profile-sub{ font-size:12px; color:var(--text-dim); margin-top:2px; }
+
+  .summary-row{ display:flex; gap:10px; margin-bottom:20px; }
+  .summary-card{
+    flex:1; background:var(--steel-1); border:1px solid var(--line); border-radius:14px;
+    padding:12px; text-align:center;
+  }
+  .summary-num{ font-family:'Oswald',sans-serif; font-size:20px; font-weight:700; color:var(--amber); }
+  .summary-label{ font-size:11px; color:var(--text-dim); margin-top:2px; }
+
+  .list-title{ font-size:12px; color:var(--text-dim); letter-spacing:.1em; text-transform:uppercase; margin:0 4px 10px; }
+  .empty-note{ text-align:center; color:var(--text-dim); font-size:14px; padding:26px 10px; border:1px dashed var(--line); border-radius:14px; }
+
+  .entry{
+    background:linear-gradient(180deg,var(--steel-1),var(--steel-0));
+    border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:10px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .entry.cancelled{ opacity:.6; }
+  .entry-date{ flex:none; text-align:center; width:52px; }
+  .entry-day{ font-family:'Oswald',sans-serif; font-size:16px; font-weight:700; }
+  .entry-month{ font-size:10px; color:var(--text-dim); }
+  .entry-body{ flex:1; min-width:0; }
+  .entry-title{ font-size:14px; font-weight:600; }
+  .entry-sub{ font-size:12px; color:var(--text-dim); margin-top:1px; }
+  .entry-overtime{ color:var(--danger); font-weight:600; }
+  .entry-time{ flex:none; font-size:12px; color:var(--text-dim); }
+
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <a class="back-btn" href="./index.html">← חזרה למסך הראשי</a>
+
+  <div id="profile" class="profile"></div>
+
+  <div class="summary-row" id="summaryRow"></div>
+
+  <div class="list-title">היסטוריית הפסקות</div>
+  <div id="emptyNote" class="empty-note hidden">אין עדיין היסטוריה לטבח הזה</div>
+  <div id="entries"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="./firebase-init.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const chefId = params.get('id');
+
+  function initials(name){
+    const parts = name.trim().split(/\s+/);
+    if(parts.length === 1) return parts[0].slice(0,2);
+    return parts[0][0] + parts[1][0];
+  }
+
+  const STATIONS = { tabun: 'טאבון', cold: 'פס קר', hot: 'פס חם', wash: 'שטיפה' };
+  function stationLabel(key){ return key ? (STATIONS[key] || key) : 'לא במשמרת היום'; }
+
+  Promise.all([
+    db.ref('bank/'+chefId).once('value'),
+    db.ref('history').once('value')
+  ]).then(([bankSnap, historySnap])=>{
+    const chef = bankSnap.val();
+    const historyObj = historySnap.val() || {};
+    const allHistory = Object.values(historyObj);
+    const chefEntries = allHistory
+      .filter(h => h.chefId === chefId)
+      .sort((a,b) => b.finishedAt - a.finishedAt);
+
+    const chefName = chef ? chef.name : (chefEntries[0] ? chefEntries[0].chefName : 'טבח');
+
+    const profileEl = document.getElementById('profile');
+    profileEl.innerHTML = `
+      <div class="profile-avatar">${chef && safePhoto(chef.photo) ? `<img src="${esc(safePhoto(chef.photo))}" alt="">` : esc(initials(chefName))}</div>
+      <div>
+        <div class="profile-name">${esc(chefName)}</div>
+        <div class="profile-sub">${esc(chef ? stationLabel(chef.station) : 'הוסר מהבנק')}</div>
+      </div>
+    `;
+
+    const completed = chefEntries.filter(h => h.status === 'completed');
+    const totalBreaks = chefEntries.length;
+    const totalOvertimeSec = completed.reduce((sum,h)=> sum + (h.overtimeSeconds||0), 0);
+    const overtimeCount = completed.filter(h => (h.overtimeSeconds||0) > 0).length;
+
+    const summaryRow = document.getElementById('summaryRow');
+    function fmtMinutes(totalSec){ return Math.round(totalSec/60) + " דק'"; }
+    summaryRow.innerHTML = `
+      <div class="summary-card"><div class="summary-num">${totalBreaks}</div><div class="summary-label">סה"כ הפסקות</div></div>
+      <div class="summary-card"><div class="summary-num">${overtimeCount}</div><div class="summary-label">עם חריגה</div></div>
+      <div class="summary-card"><div class="summary-num">${fmtMinutes(totalOvertimeSec)}</div><div class="summary-label">חריגה מצטברת</div></div>
+    `;
+
+    const entriesEl = document.getElementById('entries');
+    const emptyNote = document.getElementById('emptyNote');
+
+    if(chefEntries.length === 0){
+      emptyNote.classList.remove('hidden');
+    } else {
+      chefEntries.forEach(h=>{
+        const d = new Date(h.finishedAt);
+        const day = d.getDate();
+        const month = d.toLocaleDateString('he-IL', { month: 'short' });
+        const timeStr = d.toLocaleTimeString('he-IL', { hour:'2-digit', minute:'2-digit' });
+
+        let subText;
+        if(h.status === 'cancelled'){
+          subText = `הפסקה של ${Number(h.minutes) || 0} דק' - בוטלה מוקדם`;
+        } else if(h.overtimeSeconds > 0){
+          const om = Math.floor(h.overtimeSeconds/60).toString().padStart(2,'0');
+          const os = Math.floor(h.overtimeSeconds%60).toString().padStart(2,'0');
+          subText = `הפסקה של ${Number(h.minutes) || 0} דק' - <span class="entry-overtime">חריגה של ${om}:${os}</span>`;
+        } else {
+          subText = `הפסקה של ${Number(h.minutes) || 0} דק' - בזמן`;
+        }
+
+        const row = document.createElement('div');
+        row.className = 'entry' + (h.status === 'cancelled' ? ' cancelled' : '');
+        row.innerHTML = `
+          <div class="entry-date"><div class="entry-day">${day}</div><div class="entry-month">${month}</div></div>
+          <div class="entry-body">
+            <div class="entry-title">${h.status === 'cancelled' ? 'בוטלה' : 'הושלמה'}</div>
+            <div class="entry-sub">${subText}</div>
+          </div>
+          <div class="entry-time">${timeStr}</div>
+        `;
+        entriesEl.appendChild(row);
+      });
+    }
+  });
+</script>
+
+</body>
+</html>
