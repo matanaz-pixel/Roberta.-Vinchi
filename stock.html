@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>מלאי והכנות</title>
+<meta name="theme-color" content="#023305">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="./roberta-logo.png">
+<link rel="manifest" href="./stock.webmanifest">
+<link rel="apple-touch-icon" href="./roberta-icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="מלאי והכנות">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
+<style>
+  :root{
+    --green:#023305; --green-soft:#e6efe6; --cream:#fbf8f2; --card:#ffffff;
+    --line:#e9e3d6; --text:#1d2a1e; --text-dim:#566256; --accent:#c93a18; --accent-soft:#fde8e3; --ok:#1a7f33;
+  }
+  *{box-sizing:border-box;}
+  html,body{ margin:0; min-height:100%; background:var(--cream); color:var(--text); font-family:'Rubik',sans-serif; -webkit-tap-highlight-color:transparent; }
+  header{ background:var(--green); padding:18px 16px 16px; text-align:center; }
+  header img{ height:30px; max-width:80%; }
+  header .sub{ color:#d6e5d6; font-size:12px; letter-spacing:.18em; margin-top:8px; }
+  .app{ width:100%; max-width:560px; margin:0 auto; padding:12px 16px calc(120px + env(safe-area-inset-bottom)); }
+  .locked .app, .locked .bar{ display:none !important; }
+  button, input, select{ font-family:inherit; }
+  button:active{ transform:scale(.98); filter:brightness(.94); }
+  :focus-visible{ outline:3px solid #1a7f33; outline-offset:2px; }
+  h1{ font-size:24px; margin:6px 0 4px; color:var(--green); }
+  h2{ font-size:18px; margin:0; }
+  .dim{ color:var(--text-dim); font-size:14px; }
+  .banner{ background:#fff4e0; border:1px solid #f0c27a; color:#6b3f00; border-radius:12px; padding:10px 14px; font-size:14px; margin-bottom:10px; }
+  .banner.err{ background:var(--accent-soft); border-color:#e8a898; color:#8f2a10; }
+
+  .top{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .back{ min-width:48px; min-height:48px; border-radius:50%; border:1px solid var(--line); background:var(--card); font-size:22px; color:var(--green); cursor:pointer; }
+  .top .ttl{ flex:1; }
+  .days{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0 14px; }
+  .chip{ min-height:48px; padding:0 18px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--text); font-size:16px; cursor:pointer; }
+  .chip[aria-pressed=true]{ background:var(--green); color:#fff; border-color:var(--green); }
+  select.chip{ appearance:auto; }
+
+  .stations{ display:flex; flex-direction:column; gap:12px; }
+  .st{ display:block; width:100%; text-align:right; background:var(--card); border:1px solid var(--line); border-radius:20px; padding:16px 18px; min-height:84px; cursor:pointer; color:var(--text); }
+  .st h2{ font-size:22px; color:var(--green); }
+  .st p{ margin:6px 0 0; font-size:15px; color:var(--text-dim); }
+  .st.done{ border-color:#9cc9a4; }
+  .link{ background:none; border:none; color:var(--green); font-size:16px; text-decoration:underline; min-height:48px; padding:0 6px; cursor:pointer; }
+
+  .rows{ display:flex; flex-direction:column; gap:10px; }
+  .row{ background:var(--card); border:1px solid var(--line); border-radius:18px; padding:12px 14px; }
+  .row.bad{ border-color:var(--accent); background:#fffafa; }
+  .row .l1{ display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+  .row .nm{ font-size:19px; font-weight:500; }
+  .row .base{ font-size:14px; color:var(--text-dim); white-space:nowrap; }
+  .row .l2{ display:flex; gap:8px; margin-top:10px; align-items:center; }
+  .row input{ flex:1; min-width:0; height:52px; border:1.5px solid var(--line); border-radius:14px; text-align:center; font-size:24px; font-weight:500; background:#fff; color:var(--text); }
+  .row input:focus{ outline:none; border-color:var(--green); box-shadow:0 0 0 3px var(--green-soft); }
+  .row .step{ width:56px; height:52px; border-radius:14px; border:1.5px solid var(--green); background:var(--card); color:var(--green); font-size:28px; line-height:1; cursor:pointer; }
+  .row .clr{ min-width:56px; height:52px; border:none; background:none; color:var(--text-dim); font-size:14px; text-decoration:underline; cursor:pointer; }
+  .progress{ font-size:15px; color:var(--text-dim); margin:2px 2px 10px; }
+  .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+  .field label{ font-size:14px; color:var(--text-dim); }
+  .field input{ height:52px; border:1.5px solid var(--line); border-radius:14px; padding:0 14px; font-size:18px; background:#fff; color:var(--text); }
+
+  .bar{ position:fixed; inset-inline:0; bottom:0; background:var(--cream); border-top:1px solid var(--line); padding:10px 16px calc(12px + env(safe-area-inset-bottom)); display:flex; gap:10px; max-width:560px; margin:0 auto; }
+  .btn{ flex:1; min-height:56px; border-radius:999px; border:1.5px solid var(--green); background:var(--card); color:var(--green); font-size:18px; font-weight:500; cursor:pointer; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center; padding:0 16px; }
+  .btn.primary{ background:var(--green); color:#fff; }
+  .btn.wa{ background:var(--ok); border-color:var(--ok); color:#fff; }
+  .btn:disabled{ opacity:.45; cursor:default; }
+  .actions{ display:flex; gap:10px; flex-wrap:wrap; margin:14px 0; }
+  .actions .btn{ flex:1 1 140px; }
+
+  .need{ display:flex; gap:10px; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:18px; padding:12px 14px; }
+  .need .info{ flex:1; min-width:0; }
+  .need .nm{ font-size:19px; font-weight:500; }
+  .need .sub{ font-size:14px; color:var(--text-dim); margin-top:2px; }
+  .need .q{ text-align:center; min-width:76px; }
+  .need .q b{ display:block; font-size:30px; color:var(--accent); line-height:1.1; font-variant-numeric:tabular-nums; }
+  .need .q span{ font-size:13px; color:var(--text-dim); }
+  .need a{ display:inline-block; margin-top:4px; color:var(--green); font-size:15px; padding:6px 0; min-height:32px; }
+  .grp{ margin:16px 0 8px; font-size:16px; font-weight:600; color:var(--green); }
+  details.grp-d{ margin-top:14px; }
+  details.grp-d summary{ min-height:48px; display:flex; align-items:center; cursor:pointer; font-weight:600; color:var(--green); }
+  .mini{ display:flex; justify-content:space-between; gap:8px; padding:10px 4px; border-bottom:1px dashed var(--line); font-size:16px; }
+  .empty{ text-align:center; color:var(--text-dim); font-size:15px; padding:26px 10px; border:1px dashed var(--line); border-radius:16px; }
+
+  .hday{ margin:16px 0 6px; font-size:17px; font-weight:600; }
+  .hst{ margin:0 0 8px; }
+  .hst .t{ font-size:14px; color:var(--text-dim); margin:6px 2px; }
+  .hc{ display:flex; width:100%; justify-content:space-between; gap:8px; align-items:center; text-align:right; min-height:52px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:8px 14px; margin-bottom:6px; font-size:16px; color:var(--text); cursor:pointer; }
+  .hc .tag{ font-size:12px; background:var(--green-soft); color:var(--green); border-radius:999px; padding:2px 10px; }
+
+  /* שער אישור מכשיר (כמו בספר המתכונים) */
+  .gate{ max-width:560px; margin:0 auto; padding:22px 16px calc(40px + env(safe-area-inset-bottom)); }
+  .gate[hidden]{ display:none; }
+  .gate-box{ background:var(--card); border:1px solid var(--line); border-radius:20px; padding:22px 18px; display:flex; flex-direction:column; gap:14px; }
+  .gate p{ margin:0; font-size:15px; line-height:1.6; }
+  .gate input[type=text]{ border:1px solid var(--line); border-radius:12px; padding:12px 14px; font:inherit; font-size:17px; min-height:48px; background:#fff; color:var(--text); }
+  .gate .code{ font-size:30px; font-weight:600; letter-spacing:.25em; color:var(--green); text-align:center; direction:ltr; background:var(--green-soft); border-radius:14px; padding:10px; }
+  .gate button{ min-height:50px; border-radius:999px; border:1px solid var(--green); font:inherit; font-size:16px; font-weight:500; cursor:pointer; background:transparent; color:var(--green); }
+  .gate button.primary{ background:var(--green); color:#fff; }
+  .hp{ position:absolute; inset-inline-start:-9999px; width:1px; height:1px; opacity:0; }
+  .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<header>
+  <img src="./roberta-logo-white.svg" alt="Roberta Vinci">
+  <div class="sub">מלאי והכנות</div>
+</header>
+<div class="gate" id="gate" hidden></div>
+<main class="app" id="app">
+  <div id="banners"></div>
+  <div id="view"></div>
+</main>
+<div class="sr" id="live" role="status" aria-live="polite"></div>
+
+<script src="recipes-lib.js"></script>
+<script src="stock-lib.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="./firebase-init.js"></script>
+<script>
+// ============ הגדרות ============
+// אותו Web App של ספר המתכונים: הגדרות המוצרים נקראות ממנו רק למכשיר מאושר (אותו אישור מכשיר, אותו מפתח במכשיר).
+const ACCESS_URL = 'https://script.google.com/macros/s/AKfycbyT2q5HDJJ77nzPrpd-FayB1Mq5piCG6kLpP9Kx1zq-h4dbEYZPtgNK5JYG4WXv9xSj/exec';
+const DEVICE_KEY = 'rb-device-v1', SENDER_KEY = 'rb-sender';
+const DEFS_KEY = 'sk-defs-v1', DRAFT_KEY = 'sk-draft-v1', OUTBOX_KEY = 'sk-outbox-v1';
+const DRAFT_MAX_AGE = 2 * 24 * 3600e3;
+const SK = window.SK || null;
+const $ = id => document.getElementById(id);
+function el(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text !== undefined) e.textContent = text; return e; }
+const store = {
+  get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} },
+};
+const say = t => { $('live').textContent = ''; setTimeout(() => { $('live').textContent = t; }, 30); };
+
+// ============ שעון: שעון השרת של Firebase קודם, כדי ששעון מכשיר שגוי לא יכתוב ליום הלא נכון ============
+let clockOffset = 0, connected = null, fbReady = false;
+const nowMs = () => Date.now() + clockOffset;
+const nowDate = () => new Date(nowMs());
+const hhmm = t => new Date(t).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jerusalem' });
+const dayOfDateKey = k => SK.dayIdx(new Date(k + 'T12:00:00Z'));
+function fmtDate(k){ const [y, m, d] = k.split('-'); return `${SK.DAYS[dayOfDateKey(k)]} ${Number(d)}/${Number(m)}`; }
+
+// ============ מצב ============
+let defs = {};                 // stationKey -> { products, warnings, error?, missing? }
+let today = SK ? SK.dateKey(nowDate()) : '';
+let userDay = null;            // null = אוטומטי (היום)
+let live = {};                 // station -> { id: count }, ליום של today
+let histCache = {};            // dateKey -> station -> { id: count }
+let histDays = 7;
+let flags = { rejected: false, defsOld: false };
+let started = false, unsub = null, gateStatus = '', gateTimer = 0, saving = false, flushing = false;
+const curDay = () => userDay == null ? SK.dayIdx(nowDate()) : userDay;
+const stationName = k => (SK.STATIONS.find(s => s.key === k) || {}).name || k;
+
+// ============ שער אישור מכשיר ============
+function deviceId(){
+  try{
+    let v = localStorage.getItem(DEVICE_KEY);
+    if(RB.isDeviceId(v)) return v;
+    v = RB.newDeviceId(crypto.getRandomValues(new Uint8Array(16)));
+    localStorage.setItem(DEVICE_KEY, v);
+    return v;
+  }catch(e){ return ''; }
+}
+async function fetchText(url, ms){
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), ms);
+  try{ const r = await fetch(url, { cache: 'no-store', signal: ctl.signal }); return r.ok ? await r.text() : ''; }finally{ clearTimeout(timer); }
+}
+async function fetchStock(){
+  const id = deviceId();
+  if(!id) return { acc: { status: 'nostorage' }, text: '' };
+  let text = '';
+  try{ text = await fetchText(`${ACCESS_URL}?a=stock&d=${id}`, 12000); }catch(e){}
+  return { acc: RB.parseAccess(text), text };
+}
+async function sendAccessRequest(name){
+  try{
+    const res = await fetch(ACCESS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ a: 'request', dev: deviceId(), name, website: $('gate-hp')?.value || '' }) });
+    const text = (await res.text()).trim();
+    const acc = RB.parseAccess(text);
+    return acc ? { acc } : { err: text };
+  }catch(e){ return { err: 'network' }; }
+}
+const GATE_ERRORS = { network: 'אין חיבור לאינטרנט. נסו שוב.', busy: 'יש כרגע הרבה בקשות. נסו שוב בעוד כמה דקות.', invalid: 'כתבו את השם שלכם.', error: 'אירעה שגיאה. נסו שוב.' };
+
+function hideGate(){ clearInterval(gateTimer); gateTimer = 0; gateStatus = ''; document.body.classList.remove('locked'); $('gate').hidden = true; }
+function lockOut(acc){
+  store.del(DEFS_KEY);
+  defs = {}; live = {}; histCache = {};
+  if(unsub){ unsub(); unsub = null; }
+  $('view').replaceChildren();
+  started = false;
+  showGate(acc);
+}
+async function recheckGate(){
+  if(gateStatus === 'unknown' || gateStatus === 'nostorage') return;
+  const { acc } = await fetchStock();
+  if(acc && acc.status === 'ok'){ hideGate(); boot(); }
+  else if(acc && acc.status !== gateStatus) showGate(acc);
+  else if(!acc && gateStatus !== 'offline') showGate({ status: 'offline' });
+}
+function showGate(acc){
+  const g = $('gate');
+  document.body.classList.add('locked'); g.hidden = false;
+  clearInterval(gateTimer); gateTimer = 0; gateStatus = acc.status;
+  const box = el('div', 'gate-box');
+  const msg = el('p'); msg.hidden = true; msg.setAttribute('role', 'alert'); msg.style.color = 'var(--accent)';
+  const err = t => { msg.textContent = t; msg.hidden = false; };
+  const btn = (label, cls, fn) => { const b = el('button', cls, label); b.type = 'button'; b.onclick = fn; return b; };
+  if(acc.status === 'unknown'){
+    box.append(el('h1', '', 'מלאי והכנות'), el('p', '', 'כדי לפתוח צריך אישור. אם כבר אושרתם בספר המתכונים מאותו מכשיר, האישור תקף גם כאן. אחרת כתבו את השם שלכם ולחצו על הבקשה.'));
+    const name = el('input'); name.type = 'text'; name.maxLength = 60; name.placeholder = 'השם שלך'; name.autocomplete = 'name'; name.setAttribute('aria-label', 'השם שלך');
+    try{ name.value = localStorage.getItem(SENDER_KEY) || ''; }catch(e){}
+    const hp = el('input', 'hp'); hp.type = 'text'; hp.id = 'gate-hp'; hp.tabIndex = -1; hp.autocomplete = 'off'; hp.setAttribute('aria-hidden', 'true');
+    const go = btn('בקש גישה', 'primary', async () => {
+      const n = name.value.trim();
+      if(!n){ err(GATE_ERRORS.invalid); name.focus(); return; }
+      go.disabled = true; go.textContent = 'שולח...'; msg.hidden = true;
+      const r = await sendAccessRequest(n);
+      go.disabled = false; go.textContent = 'בקש גישה';
+      if(r.acc){ try{ localStorage.setItem(SENDER_KEY, n); }catch(e){} r.acc.status === 'ok' ? (hideGate(), boot()) : showGate(r.acc); }
+      else err(GATE_ERRORS[r.err] || GATE_ERRORS.error);
+    });
+    name.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); go.click(); } });
+    box.append(name, hp, go, msg);
+  }else if(acc.status === 'pending'){
+    box.append(el('h1', '', 'הבקשה נשלחה'), el('p', '', (acc.name ? acc.name + ', ' : '') + 'ברגע שיאשרו אותך האפליקציה תיפתח כאן לבד. אפשר להשאיר את הדף פתוח.'));
+    if(acc.code) box.append(el('p', '', 'הקוד שלך (כדי שיזהו אותך):'), el('div', 'code', acc.code));
+    box.append(btn('בדוק עכשיו', 'primary', async e => { e.target.textContent = 'בודק...'; await recheckGate(); if(gateStatus === 'pending'){ e.target.textContent = 'עדיין לא אושר'; setTimeout(() => { e.target.textContent = 'בדוק עכשיו'; }, 2500); } }));
+    gateTimer = setInterval(() => { if(document.visibilityState === 'visible') recheckGate(); }, 20000);
+  }else if(acc.status === 'blocked'){
+    box.append(el('h1', '', 'אין גישה'), el('p', '', 'הגישה מהמכשיר הזה אינה פעילה. אם זו טעות, אפשר לפנות למי שמאשר.'), btn('בדוק שוב', 'primary', recheckGate));
+  }else if(acc.status === 'nostorage'){
+    box.append(el('h1', '', 'לא ניתן לשמור נתונים'), el('p', '', 'הדפדפן חוסם שמירה באתר (אולי גלישה פרטית). פתחו בחלון רגיל.'));
+  }else if(acc.status === 'oldserver'){
+    box.append(el('h1', '', 'השרת עדיין לא מעודכן'), el('p', '', 'צריך לפרסם גרסה חדשה של Code.gs ב-Apps Script כדי שהמלאי יעבוד.'), btn('נסה שוב', 'primary', recheckGate));
+  }else{
+    box.append(el('h1', '', 'אין חיבור'), el('p', '', 'כדי לאמת את המכשיר צריך להתחבר לאינטרנט. אחרי הכניסה הראשונה אפשר לעבוד גם בלי קליטה.'), btn('נסה שוב', 'primary', recheckGate));
+  }
+  g.replaceChildren(box);
+}
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible' && gateStatus && gateStatus !== 'unknown') recheckGate(); });
+
+// ============ הגדרות מוצרים ============
+function applyDefs(stations){
+  defs = {};
+  for(const s of SK.STATIONS){
+    const csv = stations && stations[s.key];
+    if(!csv){ defs[s.key] = { products: [], warnings: [], missing: true }; continue; }
+    const p = SK.parseDefs(csv);
+    defs[s.key] = p ? p : { products: [], warnings: [], error: true };
+  }
+}
+async function boot(){
+  const id = deviceId();
+  if(!id){ showGate({ status: 'nostorage' }); return; }
+  let cache = store.get(DEFS_KEY);
+  if(cache && !RB.cacheValid(cache.ts, Date.now())) cache = null;
+  if(cache && !started){ applyDefs(cache.stations); start(); }
+  const { acc, text } = await fetchStock();
+  if(acc && acc.status !== 'ok'){ lockOut(acc); return; }
+  if(acc){
+    flags.defsOld = false;
+    store.set(DEFS_KEY, { ts: Date.now(), stations: acc.stations || {} });
+    applyDefs(acc.stations || {});
+    if(!started) start(); else route();
+    renderBanners();
+    return;
+  }
+  if(!cache){ showGate({ status: text ? 'oldserver' : 'offline' }); return; }
+  flags.defsOld = true; renderBanners();
+}
+
+// ============ Firebase ============
+function initFb(){
+  if(typeof firebase === 'undefined' || typeof db === 'undefined') return;
+  fbReady = true;
+  db.ref('.info/serverTimeOffset').on('value', s => { clockOffset = Number(s.val()) || 0; checkDate(); renderBanners(); });
+  db.ref('.info/connected').on('value', s => { connected = !!s.val(); renderBanners(); if(connected) flush(); });
+}
+function normCounts(obj){            // מגן מפני נתונים פגומים, גם אם הכללים נשברו
+  const out = {};
+  if(!obj || typeof obj !== 'object') return out;
+  for(const [id, c] of Object.entries(obj)){
+    if(!c || typeof c !== 'object' || typeof c.t !== 'number' || typeof c.by !== 'string' || !c.items || typeof c.items !== 'object') continue;
+    const items = {};
+    for(const [k, v] of Object.entries(c.items)) if(typeof v === 'number' && isFinite(v) && v >= 0) items[k] = v;
+    out[id] = { t: c.t, by: c.by.slice(0, 40), items };
+  }
+  return out;
+}
+function normDay(v){ const out = {}; for(const s of SK.STATIONS) out[s.key] = normCounts(v && v[s.key]); return out; }
+function watchToday(){
+  if(unsub){ unsub(); unsub = null; }
+  live = {};
+  if(!fbReady) return;
+  const ref = db.ref('stock/' + today);
+  const cb = snap => { live = normDay(snap.val()); route(); };
+  ref.on('value', cb, () => { renderBanners(); });
+  unsub = () => ref.off('value', cb);
+}
+function checkDate(){
+  if(!SK) return;
+  const k = SK.dateKey(nowDate());
+  if(k !== today){ today = k; watchToday(); route(); }
+}
+setInterval(checkDate, 30000);
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') checkDate(); });
+
+// ספירות של תאריך+פס: מה שבשרת, ועוד מה שנשמר במכשיר וטרם אושר (כדי שהרשימה תוצג מיד, גם בלי קליטה)
+function outbox(){ const o = store.get(OUTBOX_KEY); return Array.isArray(o) ? o : []; }
+function countsFor(date, st){
+  const base = date === today ? (live[st] || {}) : ((histCache[date] || {})[st] || {});
+  const out = { ...base };
+  for(const e of outbox()) if(e.date === date && e.station === st && !out[e.id]) out[e.id] = e.count;
+  return out;
+}
+async function flush(){
+  if(flushing || !fbReady) return;
+  flushing = true;
+  try{
+    for(const e of outbox()){
+      const ref = db.ref(`stock/${e.date}/${e.station}/${e.id}`);
+      try{
+        await ref.set(e.count);
+        store.set(OUTBOX_KEY, outbox().filter(x => x.id !== e.id));
+      }catch(err){
+        // אותה ספירה כבר נכתבה (מזהה זהה): מוחקים מהתור. אחרת היא נדחתה, ולא ממשיכים לנסות
+        let exists = false;
+        try{ exists = (await ref.once('value')).exists(); }catch(x){ continue; }
+        store.set(OUTBOX_KEY, outbox().filter(x => x.id !== e.id));
+        if(!exists) flags.rejected = true;
+      }
+    }
+  }finally{ flushing = false; renderBanners(); route(); }
+}
+
+// ============ באנרים ============
+function renderBanners(){
+  const b = $('banners'); const items = [];
+  if(!fbReady) items.push(['err', 'אין חיבור לשרת הספירות. אפשר לספור, והספירה תישלח כשתהיה קליטה.']);
+  else if(connected === false) items.push(['', 'אין קליטה. ספירות נשמרות במכשיר ויישלחו כשהחיבור יחזור.']);
+  if(flags.defsOld) items.push(['', 'אין חיבור לשרת. מוצגות הגדרות מוצרים שנשמרו במכשיר, והבסיסים עשויים להיות לא מעודכנים.']);
+  const pend = outbox().length;
+  if(pend) items.push(['', `${pend} ספירות ממתינות לשליחה לשרת.`]);
+  if(flags.rejected) items.push(['err', 'ספירה לא נשמרה בשרת (נדחתה). נסו לספור שוב.']);
+  if(Math.abs(clockOffset) > 5 * 60e3) items.push(['', 'השעון במכשיר לא מדויק. האפליקציה משתמשת בשעון השרת.']);
+  for(const s of SK.STATIONS){ const d = defs[s.key]; if(d && d.error) items.push(['err', `ההגדרות של ${s.name} לא תקינות (חסרה כותרת בטאב). בדקו את הגיליון.`]); }
+  b.replaceChildren(...items.map(([c, t]) => { const d = el('div', 'banner' + (c ? ' ' + c : ''), t); return d; }));
+}
+
+// ============ טיוטות (ספירה שלא נשמרה לא אובדת) ============
+function drafts(){ const d = store.get(DRAFT_KEY); return d && typeof d === 'object' ? d : {}; }
+function getDraft(date, st){ const d = drafts()[date + '|' + st]; return d && d.items ? d : null; }
+function putDraft(date, st, items, id){
+  const all = drafts(); const k = date + '|' + st;
+  const prev = all[k];
+  all[k] = { id: (prev && prev.id) || newId(), items, ts: Date.now() };
+  for(const kk of Object.keys(all)) if(!all[kk] || Date.now() - all[kk].ts > DRAFT_MAX_AGE) delete all[kk];
+  store.set(DRAFT_KEY, all);
+  return all[k];
+}
+function dropDraft(date, st){ const all = drafts(); delete all[date + '|' + st]; store.set(DRAFT_KEY, all); }
+function newId(){
+  try{ if(fbReady) return db.ref().push().key; }catch(e){}
+  return '-L' + Date.now().toString(36) + RB.newDeviceId(crypto.getRandomValues(new Uint8Array(6)));
+}
+
+// ============ ניווט ============
+function go(h){ if(location.hash === h) route(); else location.hash = h; }
+window.addEventListener('hashchange', route);
+function route(){
+  if(!started || !SK) return;
+  const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
+  const view = $('view');
+  const [name, a, b, c] = parts;
+  const valid = k => SK.STATIONS.some(s => s.key === k);
+  // לא מרנדרים מחדש מסך ספירה בזמן שהמשתמש מקליד (עדכון חי מ-Firebase יאבד פוקוס)
+  if(name === 'count' && valid(a) && view.dataset.v === 'count:' + a && view.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
+  const keep = view.dataset.v;
+  let node, key;
+  if(name === 'count' && valid(a)){ node = viewCount(a); key = 'count:' + a; }
+  else if(name === 'prep' && valid(a)){ node = viewPrep(a, b, c); key = 'prep:' + [a, b, c].join('/'); }
+  else if(name === 'history'){ node = viewHistory(); key = 'history'; }
+  else { node = viewHome(); key = 'home'; }
+  view.dataset.v = key;
+  view.replaceChildren(...node);
+  if(keep !== key){ window.scrollTo(0, 0); const h = view.querySelector('h1'); if(h){ h.tabIndex = -1; h.focus({ preventScroll: true }); } }
+}
+
+// ============ רכיבים ============
+function topBar(title, sub, backHash){
+  const t = el('div', 'top');
+  const back = el('button', 'back', '→'); back.type = 'button'; back.setAttribute('aria-label', 'חזרה'); back.onclick = () => go(backHash || '#/');
+  const w = el('div', 'ttl'); w.append(el('h1', '', title)); if(sub) w.append(el('div', 'dim', sub));
+  t.append(back, w); return t;
+}
+function dayBar(){
+  const d0 = SK.dayIdx(nowDate()), d1 = (d0 + 1) % 7;
+  const bar = el('div', 'days'); bar.setAttribute('role', 'group'); bar.setAttribute('aria-label', 'יום הבסיס');
+  const chip = (label, day) => {
+    const b = el('button', 'chip', label); b.type = 'button';
+    b.setAttribute('aria-pressed', String(curDay() === day && (userDay != null ? true : day === d0)));
+    b.onclick = () => { userDay = day === d0 ? null : day; route(); };
+    return b;
+  };
+  const sel = el('select', 'chip'); sel.setAttribute('aria-label', 'יום אחר');
+  const o0 = el('option', '', 'יום אחר'); o0.value = ''; sel.append(o0);
+  SK.DAYS.forEach((n, i) => { const o = el('option', '', n); o.value = String(i); sel.append(o); });
+  sel.onchange = () => { if(sel.value !== '') { const v = Number(sel.value); userDay = v === d0 ? null : v; route(); } };
+  bar.append(chip('היום · ' + SK.DAYS[d0], d0), chip('מחר · ' + SK.DAYS[d1], d1), sel);
+  return bar;
+}
+function prepFor(st, counts, day){
+  const prods = (defs[st] && defs[st].products) || [];
+  const act = SK.latestCount(counts);
+  return { act, list: act ? SK.prepList(prods, act.items, day) : null };
+}
+
+// ============ מסך ראשי ============
+function viewHome(){
+  const out = [el('h1', '', 'מלאי והכנות'), el('div', 'dim', 'בסיס של יום ' + SK.DAYS[curDay()] + '. מי שסופר בפס מקבל מיד רשימת הכנות.'), dayBar()];
+  const wrap = el('div', 'stations');
+  for(const s of SK.STATIONS){
+    const d = defs[s.key] || {};
+    const n = SK.productsForDay(d.products || [], curDay()).length;
+    const { act, list } = prepFor(s.key, countsFor(today, s.key), curDay());
+    const b = el('button', 'st' + (act ? ' done' : '')); b.type = 'button';
+    b.append(el('h2', '', s.name));
+    let sub;
+    if(d.missing) sub = 'אין הגדרות מוצרים לפס הזה בגיליון';
+    else if(d.error) sub = 'ההגדרות בגיליון לא תקינות';
+    else if(!n) sub = 'אין מוצרים לספירה ביום ' + SK.DAYS[curDay()];
+    else if(act) sub = `נספר ב-${hhmm(act.t)} על ידי ${act.by} · ${list.prep.length} להכין` + (list.uncounted.length ? ` · ${list.uncounted.length} לא נספרו` : '');
+    else sub = `עדיין לא נספר היום · ${n} מוצרים`;
+    b.append(el('p', '', sub));
+    b.onclick = () => go(act ? '#/prep/' + s.key : '#/count/' + s.key);
+    wrap.append(b);
+  }
+  out.push(wrap);
+  const h = el('button', 'link', 'היסטוריה ודוח'); h.type = 'button'; h.onclick = () => go('#/history');
+  out.push(h);
+  return out;
+}
+
+// ============ ספירה ============
+function parseNum(s){ const n = Number(String(s).trim().replace(',', '.')); return String(s).trim() === '' ? NaN : n; }
+function viewCount(st){
+  const day = curDay();
+  const prods = SK.productsForDay((defs[st] && defs[st].products) || [], day);
+  const out = [topBar(stationName(st), 'ספירה · בסיס של יום ' + SK.DAYS[day], '#/')];
+  if(!prods.length){ out.push(el('div', 'empty', 'אין מוצרים לספירה בפס הזה ביום ' + SK.DAYS[day] + '.')); return out; }
+  const draft = getDraft(today, st);
+  const vals = Object.assign({}, draft ? draft.items : {});
+  const errBox = el('div', 'banner err'); errBox.hidden = true; errBox.setAttribute('role', 'alert');
+  const progress = el('div', 'progress');
+  let sender = '';
+  try{ sender = localStorage.getItem(SENDER_KEY) || ''; }catch(e){}
+  const nameIn = el('input'); nameIn.type = 'text'; nameIn.maxLength = 40; nameIn.value = sender; nameIn.autocomplete = 'name'; nameIn.id = 'sender-in';
+  const nameField = el('div', 'field'); const nl = el('label', '', 'השם שלך'); nl.htmlFor = 'sender-in'; nameField.append(nl, nameIn);
+  if(!sender) out.push(nameField);
+  const rows = el('div', 'rows');
+  const save = el('button', 'btn primary', 'שמור ספירה והצג הכנות'); save.type = 'button';
+  const rowEls = {};
+  const saveDraft = () => putDraft(today, st, vals);
+  const refresh = () => {
+    const n = prods.filter(p => vals[SK.sanitizeKey(p.name)] !== undefined && String(vals[SK.sanitizeKey(p.name)]).trim() !== '').length;
+    progress.textContent = `נספרו ${n} מתוך ${prods.length}`;
+    save.disabled = saving || n === 0;
+  };
+  for(const p of prods){
+    const key = SK.sanitizeKey(p.name);
+    const row = el('div', 'row'); rowEls[key] = row;
+    const l1 = el('div', 'l1'); l1.append(el('span', 'nm', p.name), el('span', 'base', `בסיס ${SK.fmtQty(SK.baseFor(p, day))} ${p.unit || ''}`.trim()));
+    const inp = el('input'); inp.type = 'text'; inp.inputMode = 'decimal'; inp.autocomplete = 'off'; inp.value = vals[key] ?? '';
+    inp.setAttribute('aria-label', `כמה יש: ${p.name}${p.unit ? ' (' + p.unit + ')' : ''}`);
+    const cur = () => { const n = parseNum(inp.value); return n; };
+    const set = v => { inp.value = v; vals[key] = v; row.classList.remove('bad'); saveDraft(); refresh(); };
+    inp.addEventListener('input', () => { vals[key] = inp.value; row.classList.remove('bad'); inp.removeAttribute('aria-invalid'); saveDraft(); refresh(); });
+    const minus = el('button', 'step', '−'); minus.type = 'button'; minus.setAttribute('aria-label', 'הפחת ' + p.name);
+    const plus = el('button', 'step', '+'); plus.type = 'button'; plus.setAttribute('aria-label', 'הוסף ' + p.name);
+    minus.onclick = () => { const n = cur(); set(isNaN(n) ? '0' : SK.fmtQty(Math.max(0, Math.round((n - 1) * 100) / 100))); };
+    plus.onclick = () => { const n = cur(); set(isNaN(n) ? '1' : SK.fmtQty(Math.round((n + 1) * 100) / 100)); };
+    const clr = el('button', 'clr', 'לא נספר'); clr.type = 'button'; clr.setAttribute('aria-label', 'סמן כלא נספר: ' + p.name); clr.onclick = () => set('');
+    const l2 = el('div', 'l2'); l2.append(minus, inp, plus, clr);
+    row.append(l1, l2); rows.append(row);
+  }
+  out.push(progress, errBox, rows);
+  const bar = el('div', 'bar'); bar.append(save); out.push(bar);
+  save.onclick = async () => {
+    if(saving) return;
+    const who = (sender || nameIn.value).trim().slice(0, 40);
+    errBox.hidden = true;
+    if(!who){ errBox.textContent = 'כתבו את השם שלכם לפני השמירה.'; errBox.hidden = false; nameIn.focus(); return; }
+    const raw = {}; for(const p of prods){ const k = SK.sanitizeKey(p.name); if(vals[k] !== undefined) raw[k] = vals[k]; }
+    const v = SK.validateCount(prods, raw, day);
+    if(!v.ok){
+      errBox.textContent = v.errors.join(' · '); errBox.hidden = false;
+      for(const p of prods){ const k = SK.sanitizeKey(p.name); const s = String(raw[k] ?? '').trim(); if(s !== '' && v.clean[k] === undefined){ rowEls[k].classList.add('bad'); rowEls[k].querySelector('input').setAttribute('aria-invalid', 'true'); } }
+      errBox.scrollIntoView({ block: 'nearest' }); return;
+    }
+    saving = true; save.disabled = true; save.textContent = 'שומר...';
+    try{ localStorage.setItem(SENDER_KEY, who); }catch(e){}
+    const d = putDraft(today, st, vals);                    // המזהה נקבע פעם אחת לטיוטה: שמירה חוזרת לא יוצרת ספירה כפולה
+    const date = today;                                      // התאריך של תחילת הספירה (לא של רגע השמירה)
+    const e = { date, station: st, id: d.id, count: { t: nowMs(), by: who, items: v.clean } };
+    if(!outbox().some(x => x.id === e.id)) store.set(OUTBOX_KEY, outbox().concat([e]));
+    dropDraft(date, st);
+    saving = false;
+    say('הספירה נשמרה');
+    go('#/prep/' + st);
+    flush();
+  };
+  refresh();
+  return out;
+}
+
+// ============ רשימת הכנות ============
+function viewPrep(st, date, id){
+  const specific = !!(date && id);
+  const d = specific ? date : today;
+  const counts = countsFor(d, st);
+  const day = specific ? dayOfDateKey(d) : curDay();
+  const out = [topBar(stationName(st), specific ? 'ספירה מ-' + fmtDate(d) : 'רשימת הכנות · בסיס של יום ' + SK.DAYS[day], specific ? '#/history' : '#/')];
+  const c = specific ? (counts[id] ? { id, ...counts[id] } : null) : SK.latestCount(counts);
+  if(!c){
+    out.push(el('div', 'empty', specific ? 'הספירה לא נמצאה.' : 'עדיין לא נספר היום.'));
+    const b = el('button', 'btn primary', 'התחילו ספירה'); b.type = 'button'; b.onclick = () => go('#/count/' + st);
+    out.push(b); return out;
+  }
+  const prods = (defs[st] && defs[st].products) || [];
+  const list = SK.prepList(prods, c.items, day);
+  out.push(el('div', 'dim', `נספר ב-${hhmm(c.t)} על ידי ${c.by}` + (specific ? ' · לפי ההגדרות הנוכחיות של המוצרים והבסיס של יום ' + SK.DAYS[day] : '')));
+  const nCounts = Object.keys(counts).length;
+  if(!specific && nCounts > 1){ const h = el('button', 'link', `ספירות קודמות היום: ${nCounts - 1}`); h.type = 'button'; h.onclick = () => go('#/history'); out.push(h); }
+  out.push(el('div', 'grp', `להכין (${list.prep.length})`));
+  const wrap = el('div', 'rows');
+  if(!list.prep.length) wrap.append(el('div', 'empty', 'אין מה להכין. הכול מספיק.'));
+  for(const it of list.prep){
+    const r = el('div', 'need'); const info = el('div', 'info');
+    info.append(el('div', 'nm', it.name), el('div', 'sub', `יש ${SK.fmtQty(it.have)} מתוך ${SK.fmtQty(it.base)}${it.unit ? ' ' + it.unit : ''}`));
+    if(it.note) info.append(el('div', 'sub', it.note));
+    const a = el('a', '', 'פתח מתכון'); a.href = './recipes.html#q=' + encodeURIComponent(it.recipe || it.name); info.append(a);
+    const q = el('div', 'q'); q.append(el('b', '', SK.fmtQty(it.need)), el('span', '', it.unit || ''));
+    r.append(info, q); wrap.append(r);
+  }
+  out.push(wrap);
+  if(list.uncounted.length){
+    out.push(el('div', 'grp', `לא נספר (${list.uncounted.length})`));
+    const u = el('div', ''); for(const it of list.uncounted){ const m = el('div', 'mini'); m.append(el('span', '', it.name), el('span', 'dim', `בסיס ${SK.fmtQty(it.base)} ${it.unit || ''}`.trim())); u.append(m); }
+    out.push(u);
+  }
+  if(list.enough.length){
+    const det = el('details', 'grp-d'); det.append(el('summary', '', `מספיק (${list.enough.length})`));
+    for(const it of list.enough){ const m = el('div', 'mini'); m.append(el('span', '', it.name), el('span', 'dim', `יש ${SK.fmtQty(it.have)} מתוך ${SK.fmtQty(it.base)} ${it.unit || ''}`.trim())); det.append(m); }
+    out.push(det);
+  }
+  const acts = el('div', 'actions');
+  if(!specific){ const n = el('button', 'btn', 'ספירה חדשה'); n.type = 'button'; n.onclick = () => go('#/count/' + st); acts.append(n); }
+  const wa = el('a', 'btn wa', 'שלח בוואטסאפ');
+  wa.href = 'https://wa.me/?text=' + encodeURIComponent(SK.formatWhatsApp({ station: stationName(st), dateKey: d, dayName: SK.DAYS[day], by: c.by, prep: list.prep, uncounted: list.uncounted }));
+  wa.target = '_blank'; wa.rel = 'noopener'; acts.append(wa);
+  out.push(acts);
+  return out;
+}
+
+// ============ היסטוריה ודוח ============
+function loadHist(date){
+  if(date === today || histCache[date] || !fbReady) return;
+  histCache[date] = null;
+  db.ref('stock/' + date).once('value').then(s => { histCache[date] = normDay(s.val()); route(); }, () => { histCache[date] = normDay(null); route(); });
+}
+function viewHistory(){
+  const out = [topBar('היסטוריה ודוח', 'הרשימות מחושבות לפי ההגדרות הנוכחיות של המוצרים והבסיס של יום השבוע של התאריך.', '#/')];
+  for(let i = 0; i < histDays; i++){
+    const date = SK.addDays(today, -i);
+    loadHist(date);
+    const sec = el('section'); sec.append(el('div', 'hday', fmtDate(date)));
+    const dayData = date === today ? live : histCache[date];
+    if(date !== today && dayData === null){ sec.append(el('div', 'dim', 'טוען...')); out.push(sec); continue; }
+    let any = false;
+    for(const s of SK.STATIONS){
+      const counts = countsFor(date, s.key);
+      const ids = Object.keys(counts).sort((x, y) => counts[y].t - counts[x].t || (x < y ? 1 : -1));
+      if(!ids.length) continue; any = true;
+      const act = SK.latestCount(counts);
+      const g = el('div', 'hst'); g.append(el('div', 't', s.name));
+      for(const id of ids){
+        const c = counts[id];
+        const b = el('button', 'hc'); b.type = 'button';
+        const l = el('span', '', `${hhmm(c.t)} · ${c.by}`);
+        const r = el('span'); const nPrep = SK.prepList((defs[s.key] || {}).products || [], c.items, dayOfDateKey(date)).prep.length;
+        r.append(el('span', 'dim', `${nPrep} להכין `)); if(act && act.id === id) r.append(el('span', 'tag', 'פעילה'));
+        b.append(l, r);
+        b.onclick = () => go(`#/prep/${s.key}/${date}/${encodeURIComponent(id)}`);
+        g.append(b);
+      }
+      sec.append(g);
+    }
+    if(!any) sec.append(el('div', 'dim', 'אין ספירות'));
+    out.push(sec);
+  }
+  const more = el('button', 'btn', 'עוד 7 ימים'); more.type = 'button'; more.onclick = () => { histDays += 7; route(); };
+  out.push(el('div', 'actions').appendChild(more).parentNode);
+  return out;
+}
+
+// ============ הפעלה ============
+function start(){
+  started = true;
+  renderBanners();
+  watchToday();
+  if(!location.hash) history.replaceState(null, '', '#/');
+  route();
+}
+(function init(){
+  if(!SK){ $('view').append(el('div', 'banner err', 'שגיאת טעינה: stock-lib.js לא נטען.')); return; }
+  initFb();
+  renderBanners();
+  boot();
+  setTimeout(flush, 1500);
+})();
+if('serviceWorker' in navigator && location.protocol !== 'file:'){
+  window.addEventListener('load', () => navigator.serviceWorker.register('./stock-sw.js', { scope: './stock.html' }).catch(() => {}));
+}
+</script>
+</body>
+</html>
