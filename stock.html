@@ -158,6 +158,8 @@ let live = {};                 // station -> { id: count }, ליום של today
 let histCache = {};            // dateKey -> station -> { id: count }
 let histDays = 7;
 let flags = { rejected: false, defsOld: false };
+let typedName = '';
+const bootAt = Date.now();
 let started = false, unsub = null, gateStatus = '', gateTimer = 0, saving = false, flushing = false;
 const curDay = () => userDay == null ? SK.dayIdx(nowDate()) : userDay;
 const stationName = k => (SK.STATIONS.find(s => s.key === k) || {}).name || k;
@@ -333,6 +335,7 @@ async function flush(){
       const ref = db.ref(`stock/${e.date}/${e.station}/${e.id}`);
       try{
         await ref.set(e.count);
+        if(e.date !== today){ const h = histCache[e.date]; if(h) (h[e.station] = h[e.station] || {})[e.id] = e.count; }   // תאריך שאינו היום לא מושמע חי
         store.set(OUTBOX_KEY, outbox().filter(x => x.id !== e.id));
       }catch(err){
         // אותה ספירה כבר נכתבה (מזהה זהה): מוחקים מהתור. אחרת היא נדחתה, ולא ממשיכים לנסות
@@ -349,7 +352,7 @@ async function flush(){
 function renderBanners(){
   const b = $('banners'); const items = [];
   if(!fbReady) items.push(['err', 'אין חיבור לשרת הספירות. אפשר לספור, והספירה תישלח כשתהיה קליטה.']);
-  else if(connected === false) items.push(['', 'אין קליטה. ספירות נשמרות במכשיר ויישלחו כשהחיבור יחזור.']);
+  else if(connected === false && Date.now() - bootAt > 4000) items.push(['', 'אין קליטה. ספירות נשמרות במכשיר ויישלחו כשהחיבור יחזור.']);
   if(flags.defsOld) items.push(['', 'אין חיבור לשרת. מוצגות הגדרות מוצרים שנשמרו במכשיר, והבסיסים עשויים להיות לא מעודכנים.']);
   const pend = outbox().length;
   if(pend) items.push(['', `${pend} ספירות ממתינות לשליחה לשרת.`]);
@@ -418,6 +421,7 @@ function dayBar(){
   const o0 = el('option', '', 'יום אחר'); o0.value = ''; sel.append(o0);
   SK.DAYS.forEach((n, i) => { const o = el('option', '', n); o.value = String(i); sel.append(o); });
   sel.onchange = () => { if(sel.value !== '') { const v = Number(sel.value); userDay = v === d0 ? null : v; route(); } };
+  sel.value = userDay != null && userDay !== d1 ? String(userDay) : '';
   bar.append(chip('היום · ' + SK.DAYS[d0], d0), chip('מחר · ' + SK.DAYS[d1], d1), sel);
   return bar;
 }
@@ -460,19 +464,24 @@ function viewCount(st){
   const prods = SK.productsForDay((defs[st] && defs[st].products) || [], day);
   const out = [topBar(stationName(st), 'ספירה · בסיס של יום ' + SK.DAYS[day], '#/')];
   if(!prods.length){ out.push(el('div', 'empty', 'אין מוצרים לספירה בפס הזה ביום ' + SK.DAYS[day] + '.')); return out; }
-  const draft = getDraft(today, st);
+  // התאריך של הספירה נקבע כשמסך הספירה נפתח ונשאר כל עוד הוא פתוח, גם אם עבר חצות באמצע
+  const vw = $('view');
+  const date = vw.dataset.v === 'count:' + st && vw.dataset.countDate ? vw.dataset.countDate : today;
+  vw.dataset.countDate = date;
+  const draft = getDraft(date, st);
   const vals = Object.assign({}, draft ? draft.items : {});
   const errBox = el('div', 'banner err'); errBox.hidden = true; errBox.setAttribute('role', 'alert');
   const progress = el('div', 'progress');
   let sender = '';
   try{ sender = localStorage.getItem(SENDER_KEY) || ''; }catch(e){}
-  const nameIn = el('input'); nameIn.type = 'text'; nameIn.maxLength = 40; nameIn.value = sender; nameIn.autocomplete = 'name'; nameIn.id = 'sender-in';
+  const nameIn = el('input'); nameIn.type = 'text'; nameIn.maxLength = 40; nameIn.value = sender || typedName; nameIn.autocomplete = 'name'; nameIn.id = 'sender-in';
+  nameIn.addEventListener('input', () => { typedName = nameIn.value; });
   const nameField = el('div', 'field'); const nl = el('label', '', 'השם שלך'); nl.htmlFor = 'sender-in'; nameField.append(nl, nameIn);
   if(!sender) out.push(nameField);
   const rows = el('div', 'rows');
   const save = el('button', 'btn primary', 'שמור ספירה והצג הכנות'); save.type = 'button';
   const rowEls = {};
-  const saveDraft = () => putDraft(today, st, vals);
+  const saveDraft = () => putDraft(date, st, vals);
   const refresh = () => {
     const n = prods.filter(p => vals[SK.sanitizeKey(p.name)] !== undefined && String(vals[SK.sanitizeKey(p.name)]).trim() !== '').length;
     progress.textContent = `נספרו ${n} מתוך ${prods.length}`;
@@ -511,14 +520,13 @@ function viewCount(st){
     }
     saving = true; save.disabled = true; save.textContent = 'שומר...';
     try{ localStorage.setItem(SENDER_KEY, who); }catch(e){}
-    const d = putDraft(today, st, vals);                    // המזהה נקבע פעם אחת לטיוטה: שמירה חוזרת לא יוצרת ספירה כפולה
-    const date = today;                                      // התאריך של תחילת הספירה (לא של רגע השמירה)
+    const d = putDraft(date, st, vals);                      // המזהה נקבע פעם אחת לטיוטה: שמירה חוזרת לא יוצרת ספירה כפולה
     const e = { date, station: st, id: d.id, count: { t: nowMs(), by: who, items: v.clean } };
     if(!outbox().some(x => x.id === e.id)) store.set(OUTBOX_KEY, outbox().concat([e]));
     dropDraft(date, st);
     saving = false;
     say('הספירה נשמרה');
-    go('#/prep/' + st);
+    location.replace(date === today ? '#/prep/' + st : '#/prep/' + st + '/' + date + '/' + e.id);
     flush();
   };
   refresh();
@@ -529,6 +537,7 @@ function viewCount(st){
 function viewPrep(st, date, id){
   const specific = !!(date && id);
   const d = specific ? date : today;
+  loadHist(d);
   const counts = countsFor(d, st);
   const day = specific ? dayOfDateKey(d) : curDay();
   const out = [topBar(stationName(st), specific ? 'ספירה מ-' + fmtDate(d) : 'רשימת הכנות · בסיס של יום ' + SK.DAYS[day], specific ? '#/history' : '#/')];
@@ -629,6 +638,7 @@ function start(){
   renderBanners();
   boot();
   setTimeout(flush, 1500);
+  setTimeout(renderBanners, 4200);
 })();
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
   window.addEventListener('load', () => navigator.serviceWorker.register('./stock-sw.js', { scope: './stock.html' }).catch(() => {}));
