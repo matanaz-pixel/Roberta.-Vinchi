@@ -363,6 +363,20 @@ async def main():
             check('R7 bad date in the URL falls back to today', await pg.locator('.adm-date input').input_value() == '2026-10-28')
             await ctx.close()
 
+            # ---------- הודעות ריקות ברורות ----------
+            HE = 'מוצר,יחידה,ראשון,שני,שלישי,רביעי,חמישי,שישי,שבת,מתכון,הערה'
+            saved_csv = dict(CSV)
+            CSV['hot'] = HE
+            CSV['tabun'] = 'מוצר,יחידה\nבצק,ק"ג'
+            srv = Srv('ok'); ctx = await mk_ctx(b, base, srv); pg = await new_page(ctx, errs)
+            await pg.goto(base + '/stock.html'); await pg.wait_for_selector('.st')
+            ht = await pg.locator('.st', has_text='פס חם').inner_text(); tt = await pg.locator('.st', has_text='טאבון').inner_text()
+            check('S1 tab with valid headers and no products says it is empty, not broken', 'אין מוצרים בטאב' in ht and 'לא תקינות' not in ht, ht)
+            check('S2 tab with missing headers still says the settings are broken', 'לא תקינות' in tt, tt)
+            bn = await pg.locator('#banners').inner_text()
+            check('S3 banner only for the broken tab', 'טאבון' in bn and 'פס חם' not in bn, bn)
+            await ctx.close(); CSV.update(saved_csv)
+
             # ---------- נגישות בסיסית ----------
             srv = Srv('ok'); ctx = await mk_ctx(b, base, srv); pg = await new_page(ctx, errs)
             await pg.goto(base + '/stock.html#/admin'); await pg.wait_for_selector('.st')

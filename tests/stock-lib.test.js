@@ -479,3 +479,11 @@ test('coverageDays: פירוט יום-יום כמו בדוגמה (יש 1 + לה�
   const q = { name: 'y', base: [3, null, 4, 4, 4, 4, 4] };
   assert.deepEqual(SK.coverageDays(q, 5, 0).days.map(d => d.day), [0, 2]);
 });
+
+test('defsProblem: מבדיל בין כותרת חסרה לטאב בלי מוצרים', () => {
+  assert.strictEqual(SK.defsProblem(H), 'empty');
+  assert.strictEqual(SK.defsProblem(H + '\n,,1,1,1,1,1,1,1,,'), 'empty');
+  assert.strictEqual(SK.defsProblem('מוצר,יחידה,ראשון\nשום,ק,1'), 'headers');
+  assert.strictEqual(SK.defsProblem(''), 'headers');
+  assert.strictEqual(SK.defsProblem(null), 'headers');
+});

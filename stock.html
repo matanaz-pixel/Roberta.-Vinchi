@@ -284,7 +284,7 @@ function applyDefs(stations){
     const csv = stations && stations[s.key];
     if(!csv){ defs[s.key] = { products: [], warnings: [], missing: true }; continue; }
     const p = SK.parseDefs(csv);
-    defs[s.key] = p ? p : { products: [], warnings: [], error: true };
+    defs[s.key] = p ? p : (SK.defsProblem(csv) === 'empty' ? { products: [], warnings: [], empty: true } : { products: [], warnings: [], error: true });
   }
 }
 async function boot(){
@@ -487,6 +487,7 @@ function viewHome(){
     b.append(el('h2', '', s.name));
     let sub;
     if(d.missing) sub = 'אין הגדרות מוצרים לפס הזה בגיליון';
+    else if(d.empty) sub = 'עדיין אין מוצרים בטאב של הפס הזה בגיליון';
     else if(d.error) sub = 'ההגדרות בגיליון לא תקינות';
     else if(!n) sub = 'אין מוצרים לספירה ביום ' + SK.DAYS[curDay()];
     else if(act) sub = `נספר ב-${hhmm(act.t)} על ידי ${act.by} · ${list.prep.length} להכין` + (list.uncounted.length ? ` · ${list.uncounted.length} לא נספרו` : '');
@@ -618,7 +619,7 @@ function viewPrep(st, date, id){
 
   out.push(el('div', 'grp', `להכין (${list.prep.length})`));
   const wrap = el('div', 'rows');
-  if(!list.prep.length) wrap.append(el('div', 'empty', 'אין מה להכין. הכול מספיק.'));
+  if(!list.prep.length) wrap.append(el('div', 'empty', !list.enough.length ? 'לא נספר אף מוצר, אז אין מה להכין.' : list.uncounted.length ? 'אין מה להכין לפי מה שנספר.' : 'אין מה להכין. הכול מספיק.'));
   for(const it of list.prep){
     const r = el('div', 'need'); const info = el('div', 'info');
     info.append(el('div', 'nm', it.name), el('div', 'sub', `יש ${SK.fmtQty(it.have)} מתוך ${SK.fmtQty(it.base)}${it.unit ? ' ' + it.unit : ''} · חסר ${SK.fmtQty(it.need)}`));

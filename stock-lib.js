@@ -117,6 +117,14 @@ function parseDefs(csvText){
   }
   return products.length ? { products, warnings } : null;
 }
+// טאב שלא נקרא כהגדרות: 'headers' = חסרה כותרת (מוצר או אחד הימים), 'empty' = הכותרות תקינות אבל אין מוצרים
+function defsProblem(csvText){
+  if(typeof csvText !== 'string') return 'headers';
+  const rows = rb().parseCSV(csvText);
+  if(!rows.length) return 'headers';
+  const have = new Set(rows[0].map(h => h.trim()));
+  return have.has('מוצר') && DAYS.every(d => have.has(d)) ? 'empty' : 'headers';
+}
 function baseFor(product, day){
   if(!product || !Array.isArray(product.base) || !Number.isInteger(day) || day < 0 || day > 6) return null;
   const v = product.base[day];
@@ -252,6 +260,6 @@ function formatWhatsApp({ station, dateKey: dk, dayName, by, rows, prep, uncount
   return out.join('\n');
 }
 
-const api = { STATIONS, DAYS, HEADERS, parseDefs, baseFor, dayIdx, dateKey, addDays, sanitizeKey, productsForDay, validateCount, latestCount, prepList, fmtQty, coverageDays, coverage, formatWhatsApp };
+const api = { STATIONS, DAYS, HEADERS, parseDefs, defsProblem, baseFor, dayIdx, dateKey, addDays, sanitizeKey, productsForDay, validateCount, latestCount, prepList, fmtQty, coverageDays, coverage, formatWhatsApp };
 if(typeof module === 'object' && module.exports) module.exports = api; else root.SK = api;
 })(typeof self !== 'undefined' ? self : this);
