@@ -441,7 +441,7 @@ const covP = { name: 'x', base: [5, 4, null, 6, 6, 6, 6] };
 test('coverage: מחשב עד איזה יום מספיק', () => {
   assert.equal(SK.coverage(covP, 0, 0), 'לא מספיק להיום');
   assert.equal(SK.coverage(covP, 3, 0), 'מספיק לחלק מהיום');
-  assert.equal(SK.coverage(covP, 5, 0), 'מספיק עד סוף יום ראשון');
+  assert.equal(SK.coverage(covP, 5, 0), 'מספיק עד סוף היום');
   assert.equal(SK.coverage(covP, 7, 0), 'מספיק עד יום שני (חלק מהיום)');
   assert.equal(SK.coverage(covP, 9, 0), 'מספיק עד סוף יום שני');
   assert.equal(SK.coverage(covP, 10, 0), 'מספיק עד יום רביעי (חלק מהיום)');
@@ -486,4 +486,10 @@ test('defsProblem: מבדיל בין כותרת חסרה לטאב בלי מוצ�
   assert.strictEqual(SK.defsProblem('מוצר,יחידה,ראשון\nשום,ק,1'), 'headers');
   assert.strictEqual(SK.defsProblem(''), 'headers');
   assert.strictEqual(SK.defsProblem(null), 'headers');
+});
+
+test('formatWhatsApp: מוצר חסר שהטבח בחר לא להכין לא מנוסח כסתירה', () => {
+  const t = SK.formatWhatsApp({ station: 'פס', rows: [{ name: 'רוטב', unit: 'ק״ג', have: 1, prep: 0, need: 3, cover: 'מספיק לחלק מהיום' }] });
+  assert.match(t, /רוטב: יש 1 ק״ג, לא מכינים \(חסר 3 ק״ג\), מספיק לחלק מהיום/);
+  assert.doesNotMatch(t, /אין צורך להכין/);
 });

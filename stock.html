@@ -30,6 +30,7 @@
   button, input, select{ font-family:inherit; }
   button:active{ transform:scale(.98); filter:brightness(.94); }
   :focus-visible{ outline:3px solid #1a7f33; outline-offset:2px; }
+  h1:focus, h1:focus-visible{ outline:none; }
   h1{ font-size:24px; margin:6px 0 4px; color:var(--green); }
   h2{ font-size:18px; margin:0; }
   .dim{ color:var(--text-dim); font-size:14px; }
@@ -72,6 +73,10 @@
   .btn.primary{ background:var(--green); color:#fff; }
   .btn.wa{ background:var(--ok); border-color:var(--ok); color:#fff; }
   .btn:disabled{ opacity:.45; cursor:default; }
+  .row.warnrow{ border-color:#d9a400; background:#fffdf3; }
+  .row .warn, .need .warn{ margin-top:6px; font-size:15px; color:#8a5a00; font-weight:500; }
+  .pbar{ position:fixed; inset-inline:0; bottom:0; margin:0 auto; max-width:560px; background:var(--cream); border-top:1px solid var(--line); padding:10px 16px calc(12px + env(safe-area-inset-bottom)); z-index:5; }
+  .need .cov.lvl-bad{ color:var(--accent); } .need .cov.lvl-warn{ color:#8a5a00; }
   .actions{ display:flex; gap:10px; flex-wrap:wrap; margin:14px 0; }
   .actions .btn{ flex:1 1 140px; }
 
@@ -541,16 +546,19 @@ function viewCount(st){
     const inp = el('input'); inp.type = 'text'; inp.inputMode = 'decimal'; inp.autocomplete = 'off'; inp.value = vals[key] ?? '';
     { const pv = prevItems[key]; inp.placeholder = typeof pv === 'number' ? 'קודם ' + SK.fmtQty(pv) : '—'; }   // רמז בלבד, לא ערך: אי אפשר לשמור בטעות ספירה ישנה
     inp.setAttribute('aria-label', `כמה יש: ${p.name}${p.unit ? ' (' + p.unit + ')' : ''}`);
+    inp.enterKeyHint = 'done'; inp.addEventListener('focus', () => setTimeout(() => { try{ inp.select(); }catch(e){} }, 0));
+    const baseQ = SK.baseFor(p, day), warnEl = el('div', 'warn'); warnEl.hidden = true;
+    const updWarn = () => { const n = parseNum(inp.value); const big = !isNaN(n) && baseQ && n > baseQ * 3; warnEl.hidden = !big; row.classList.toggle('warnrow', !!big); if(big) warnEl.textContent = `הרבה יותר מהיעד (${SK.fmtQty(baseQ)}${p.unit ? ' ' + p.unit : ''}). בטוחים?`; };
     const cur = () => { const n = parseNum(inp.value); return n; };
-    const set = v => { inp.value = v; vals[key] = v; row.classList.remove('bad'); saveDraft(); refresh(); };
-    inp.addEventListener('input', () => { vals[key] = inp.value; row.classList.remove('bad'); inp.removeAttribute('aria-invalid'); saveDraft(); refresh(); });
+    const set = v => { inp.value = v; vals[key] = v; row.classList.remove('bad'); saveDraft(); updWarn(); refresh(); };
+    inp.addEventListener('input', () => { vals[key] = inp.value; row.classList.remove('bad'); inp.removeAttribute('aria-invalid'); saveDraft(); updWarn(); refresh(); });
     const minus = el('button', 'step', '−'); minus.type = 'button'; minus.setAttribute('aria-label', 'הפחת ' + p.name);
     const plus = el('button', 'step', '+'); plus.type = 'button'; plus.setAttribute('aria-label', 'הוסף ' + p.name);
     minus.onclick = () => { const n = cur(); set(isNaN(n) ? '0' : SK.fmtQty(Math.max(0, Math.round((n - 1) * 100) / 100))); };
     plus.onclick = () => { const n = cur(); set(isNaN(n) ? '1' : SK.fmtQty(Math.round((n + 1) * 100) / 100)); };
     const clr = el('button', 'clr', 'ניקוי'); clr.type = 'button'; clr.setAttribute('aria-label', 'סמן כלא נספר: ' + p.name); clr.onclick = () => set('');
     const l2 = el('div', 'l2'); l2.append(minus, inp, plus, clr);
-    row.append(l1, l2); rows.append(row);
+    row.append(l1, l2, warnEl); updWarn(); rows.append(row);
   }
   out.push(progress, errBox, rows);
   const bar = el('div', 'bar'); bar.append(save); out.push(bar);
@@ -609,7 +617,7 @@ function viewPrep(st, date, id){
   for(const it of list.prep){ const v = saved[SK.sanitizeKey(it.name)]; chosen[it.name] = (typeof v === 'number' && isFinite(v) && v >= 0 && v <= 100000) ? v : it.need; }
   const prodByName = Object.create(null); for(const p of prods) prodByName[p.name] = p;
   const waRows = () => [
-    ...list.prep.map(it => ({ name: it.name, unit: it.unit, have: it.have, prep: chosen[it.name], cover: SK.coverage(prodByName[it.name], it.have + chosen[it.name], day) })),
+    ...list.prep.map(it => ({ name: it.name, unit: it.unit, have: it.have, prep: chosen[it.name], need: it.need, cover: SK.coverage(prodByName[it.name], it.have + chosen[it.name], day) })),
     ...list.uncounted.map(it => ({ name: it.name, unit: it.unit })),
     ...list.enough.map(it => ({ name: it.name, unit: it.unit, have: it.have, prep: 0, cover: SK.coverage(prodByName[it.name], it.have, day) }))
   ];
@@ -632,12 +640,21 @@ function viewPrep(st, date, id){
     const inp = el('input'); inp.type = 'text'; inp.inputMode = 'decimal'; inp.setAttribute('aria-label', 'כמה להכין ' + it.name);
     inp.value = SK.fmtQty(chosen[it.name]);
     const step = it.base >= 20 ? 5 : it.base >= 5 ? 1 : 0.5;
-    const set = n => { chosen[it.name] = n; cov.textContent = SK.coverage(prodByName[it.name], it.have + n, day); updateWa(); persist(); };
+    inp.enterKeyHint = 'done'; inp.addEventListener('focus', () => setTimeout(() => { try{ inp.select(); }catch(e){} }, 0));
+    const warnEl = el('div', 'warn'); warnEl.hidden = true; info.append(warnEl);
+    const showCov = () => {
+      const tot = it.have + chosen[it.name], cd = SK.coverageDays(prodByName[it.name], tot, day);
+      cov.textContent = SK.coverage(prodByName[it.name], tot, day);
+      cov.className = 'cov' + (cd && !cd.week ? (cd.days.length <= 1 ? ' lvl-bad' : cd.days.length === 2 ? ' lvl-warn' : '') : '');
+      const big = chosen[it.name] > it.base * 2; warnEl.hidden = !big;
+      if(big) warnEl.textContent = `הרבה יותר מהיעד (${SK.fmtQty(it.base)}${it.unit ? ' ' + it.unit : ''}). בטוחים?`;
+    };
+    const set = n => { chosen[it.name] = n; showCov(); updateWa(); persist(); };
     inp.addEventListener('input', () => { const t = inp.value.trim().replace(',', '.'); if(!/^\d+(\.\d{1,2})?$/.test(t)) return; const n = Number(t); if(n <= 100000) set(n); });
     inp.addEventListener('blur', () => { inp.value = SK.fmtQty(chosen[it.name]); });
     minus.onclick = () => { const n = Math.max(0, Math.round((chosen[it.name] - step) * 100) / 100); inp.value = SK.fmtQty(n); set(n); };
     plus.onclick = () => { const n = Math.min(100000, Math.round((chosen[it.name] + step) * 100) / 100); inp.value = SK.fmtQty(n); set(n); };
-    cov.textContent = SK.coverage(prodByName[it.name], it.have + chosen[it.name], day);
+    showCov();
     l2.append(minus, inp, plus); pq.append(el('span', '', 'להכין' + (it.unit ? ' (' + it.unit + ')' : '')), l2);
     r.classList.add('wrapcol'); r.append(info, pq); wrap.append(r);
   }
@@ -652,10 +669,13 @@ function viewPrep(st, date, id){
     for(const it of list.enough){ const m = el('div', 'mini'); m.append(el('span', '', it.name), el('span', 'dim', `יש ${SK.fmtQty(it.have)} מתוך ${SK.fmtQty(it.base)} ${it.unit || ''}`.trim())); det.append(m); }
     out.push(det);
   }
-  const acts = el('div', 'actions');
+  const acts = el('div', 'actions pbar');
   if(!specific){ const n = el('button', 'btn', 'ספירה חדשה'); n.type = 'button'; n.onclick = () => go('#/count/' + st); acts.append(n); }
   updateWa();
-  wa.addEventListener('click', () => {
+  let lastWa = 0;
+  wa.addEventListener('click', ev => {
+    if(Date.now() - lastWa < 1500){ ev.preventDefault(); return; }
+    lastWa = Date.now();
     const items = {};
     for(const it of list.prep) items[SK.sanitizeKey(it.name)] = chosen[it.name];
     for(const it of list.enough) items[SK.sanitizeKey(it.name)] = 0;

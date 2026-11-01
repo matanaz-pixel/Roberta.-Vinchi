@@ -226,7 +226,7 @@ function coverage(product, qty, startDay){
   if(c.week) return 'מספיק לשבוע ומעלה';
   const i = c.days.length - 1, last = c.days[i];       // היום הראשון שלא מכוסה במלואו
   if(last.got > 0) return last.day === startDay ? 'מספיק לחלק מהיום' : `מספיק עד יום ${DAYS[last.day]} (חלק מהיום)`;
-  return i === 0 ? 'לא מספיק להיום' : `מספיק עד סוף יום ${DAYS[c.days[i - 1].day]}`;
+  return i === 0 ? 'לא מספיק להיום' : (i === 1 ? 'מספיק עד סוף היום' : `מספיק עד סוף יום ${DAYS[c.days[i - 1].day]}`);
 }
 
 // ---- וואטסאפ ----
@@ -244,6 +244,7 @@ function formatWhatsApp({ station, dateKey: dk, dayName, by, rows, prep, uncount
       const counted = typeof r.have === 'number' && isFinite(r.have);
       parts.push(counted ? `יש ${fmtQty(r.have)}${u}` : 'לא נספר');
       if(typeof r.prep === 'number' && isFinite(r.prep) && r.prep > 0) parts.push(`להכין ${fmtQty(r.prep)}${u}`);
+      else if(counted && typeof r.need === 'number' && r.need > 0) parts.push(`לא מכינים (חסר ${fmtQty(r.need)}${u})`);
       else if(counted) parts.push('אין צורך להכין');
       if(oneLine(r.cover) && counted) parts.push(oneLine(r.cover));
       out.push(`${oneLine(r.name)}: ${parts.join(', ')}`);
