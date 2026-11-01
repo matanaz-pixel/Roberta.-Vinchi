@@ -58,7 +58,7 @@
               ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
             },
             "day": {
-              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 6"
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 6 && newData.val() % 1 == 0"
             },
             "items": {
               "$item": {

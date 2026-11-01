@@ -64,12 +64,12 @@ function doPost(e) {
     const cat = clip(d.cat, 100).trim(), title = clip(d.title, 200).trim(), field = clip(d.field, 30);
     const proposed = clip(d.proposed, 5000).trim();
     const sender = clean(clip(d.sender, 60)).trim();
-    if (!proposed || !FIELDS[field] || !sender) return reply('invalid');
+    if (!proposed || !Object.prototype.hasOwnProperty.call(FIELDS, field) || !sender) return reply('invalid');
     const dev = lookupDevice(d.dev);
     if (!dev || !dev.approved) return reply('denied');       // בקשות תיקון רק ממכשיר מאושר
 
     lock.waitLock(15000); locked = true;                     // הספירה והכתיבה מתבצעות תחת נעילה, כדי שבקשות מקבילות לא יעקפו את המגבלה
-    if (!rateOk(sender)) return reply('busy');
+    if (!rateOk(dev.key)) return reply('busy');          // המגבלה לפי המכשיר, לא לפי השם שהלקוח שולח
     const recipes = SpreadsheetApp.getActive().getSheetByName(RECIPES_SHEET);
     const row = findRecipeRow(recipes, cat, title);
     if (!row) return reply('unknown');
@@ -82,7 +82,7 @@ function doPost(e) {
 
     const sh = requestsSheet();
     if (isDuplicate(sh, cat, title, field, proposed)) return reply('ok');
-    sh.appendRow([new Date(), cat, title, field, current, proposed, summarize(current, proposed), comment, sender, ST.PENDING].map(safe));
+    sh.appendRow([new Date(), cat, title, field, current, proposed, summarize(current, proposed), comment, sender + ' [' + clean(dev.name) + ']', ST.PENDING].map(safe));
     notify();
     return reply('ok');
   } catch (err) {
@@ -242,7 +242,7 @@ function applyRequest(sh, r, force) {
   const statusCell = sh.getRange(r, STATUS_COL);
   const recipes = SpreadsheetApp.getActive().getSheetByName(RECIPES_SHEET);
   const row = findRecipeRow(recipes, cat, title);
-  const col = FIELDS[field] ? columnOf(recipes, FIELDS[field]) : 0;
+  const col = Object.prototype.hasOwnProperty.call(FIELDS, field) ? columnOf(recipes, FIELDS[field]) : 0;
   if (!row || !col) { statusCell.setValue(ST.NOTFOUND); return; }   // למשל אם שם המתכון שונה מאז הבקשה
   const cell = recipes.getRange(row, col);
   if (!force && norm(String(cell.getValue())) !== norm(String(base))) {

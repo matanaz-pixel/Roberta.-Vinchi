@@ -87,12 +87,15 @@ test('sender is required', () => {
   const env = approved();
   assert.strictEqual(env.post({ ...base, sender: '  ' }), 'invalid');
 });
-test('per-sender limit does not lock out other senders', () => {
+test('rate limit is per device: rotating the sender name does not bypass it', () => {
   const env = approved();
   let busy = 0;
-  for(let i = 0; i < 15; i++) if(env.post({ ...base, proposed: 'p' + i, sender: 'spammer' }) === 'busy') busy++;
+  for(let i = 0; i < 15; i++) if(env.post({ ...base, proposed: 'p' + i, sender: 'שם' + i }) === 'busy') busy++;
   assert.ok(busy >= 5);
-  assert.strictEqual(env.post({ ...base, proposed: 'שונה לגמרי', sender: 'דנה' }), 'ok');
+});
+test('prototype names are not accepted as a field', () => {
+  const env = approved();
+  assert.strictEqual(env.post({ ...base, field: 'constructor' }), 'invalid');
 });
 test('limit window is fixed, key includes the window number', () => {
   const env = approved();
