@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="ספר מתכונים">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600&display=swap" media="print" onload="this.media='all'">
 <style>
   :root{
     --green:#023305; --green-soft:#e6efe6; --cream:#fbf8f2; --card:#ffffff;
@@ -230,6 +230,29 @@
   .gate button{ min-height:50px; border-radius:999px; border:1px solid var(--green); font:inherit; font-size:16px; font-weight:500; cursor:pointer; background:transparent; color:var(--green); }
   .gate button.primary{ background:var(--green); color:#fff; }
   .gate .hp{ position:absolute; inset-inline-start:-9999px; width:1px; height:1px; opacity:0; }
+
+  /* ===== עיצוב מהודק (v2) ===== */
+  :root{ --line:#e3dccb; --gold:#b8a06a; }
+  body{ font-variant-numeric:tabular-nums; }
+  header{ position:relative; margin-bottom:5px; padding:16px 16px 14px; box-shadow:0 5px 0 var(--green); }
+  header::after{ content:""; position:absolute; inset-inline:0; bottom:-3px; height:1px; background:var(--gold); }
+  header img{ height:30px; }
+  header .sub{ font-size:11px; letter-spacing:.3em; opacity:.7; margin-top:8px; }
+  h1{ font-weight:300; font-size:30px; letter-spacing:-.01em; }
+  .back{ border-radius:50%; border-color:#d9d1bd; }
+  .chip, .tab{ border-color:#d9d1bd; }
+
+  .search{ border-color:#d9d1bd; }
+  .card{ border-radius:12px; border-color:var(--line); }
+  .card-head{ font-weight:500; }
+  .card-head .cat{ letter-spacing:.14em; color:var(--text-dim); font-size:11px; }
+  .card.open{ border-inline-start:5px solid var(--ok); }
+  .card-body h3{ letter-spacing:.2em; font-size:11px; color:var(--text-dim); }
+  .scale{ border-radius:10px; }
+  .scale input{ border-radius:10px; }
+  .yield{ border-radius:10px; }
+  .cook-btn{ letter-spacing:.02em; }
+  .timers{ padding-top:8px; }
 </style>
 </head>
 <body>
