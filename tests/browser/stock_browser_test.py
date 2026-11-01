@@ -187,7 +187,7 @@ async def main():
             check('E2 quantities = base - have (3, 2)', qs == ['3', '2'], qs)
             check('E3 enough group has חומוס, uncounted group has the xss name as text', 'מספיק (1)' in body and 'לא נספר (1)' in body and XSS in body and await pg.evaluate('window.__xss === undefined'))
             href = await pg.locator('.need a').first.get_attribute('href')
-            check('E4 recipe link deep-links to the book', href == './recipes.html#q=' + '%D7%A1%D7%97%D7%95%D7%92', href)
+            check('E4 recipe link deep-links to the book', href == './recipes.html#q=%D7%A1%D7%97%D7%95%D7%92&need=3', href)
             wa = await pg.locator('a.wa').get_attribute('href')
             from urllib.parse import unquote
             wt = unquote(wa)
@@ -400,6 +400,33 @@ async def main():
             pg = await new_page(ctx, errs)
             await pg.goto(base + '/recipes.html#q=%D7%A7%D7%A8%D7%9D%20%D7%9B%D7%A8%D7%95%D7%91%D7%99%D7%AA'); await pg.wait_for_selector('.card')
             check('Q1 book: #q= fills search and filters to the recipe', await pg.input_value('#search') == 'קרם כרובית' and await pg.locator('.card').count() == 1)
+            await ctx.close()
+            # ---------- צריכה בפועל ----------
+            seed2 = {'stock': {'2026-10-27': {'cold': {'-p1': {'t': T0 - 86400000, 'by': 'דני', 'items': {'סחוג': 2, 'מטבוחה': 3}}}},
+                               '2026-10-28': {'cold': {'-c1': {'t': T0, 'by': 'דני', 'items': {'סחוג': 1, 'מטבוחה': 3}}}}},
+                     'stockPrep': {'2026-10-27': {'cold': {'-p1': {'t': T0 - 86400000 + 60000, 'by': 'דני', 'day': 3, 'items': {'סחוג': 6, 'מטבוחה': 0}}}}}}
+            srv = Srv('ok'); srv.admin = True; ctx = await mk_ctx(b, base, srv, seed=seed2); pg = await new_page(ctx, errs)
+            await pg.goto(base + '/stock.html#/admin'); await pg.wait_for_selector('.adm')
+            await pg.locator('details.adm', has_text='צריכה מאז').locator('summary').click()
+            await pg.wait_for_timeout(300)
+            ct = await pg.locator('details.adm', has_text='צריכה מאז').inner_text()
+            check('C1 consumption = prev have + prep - now (2+6-1=7, over base 4)', 'נצרך 7' in ct and 'מעל הבסיס' in ct, ct)
+            check('C2 consumption: item with no change shows 0 used', 'מטבוחה' in ct and 'נצרך 0' in ct, ct)
+            await ctx.close()
+
+            # ---------- פתיחת מתכון מוכפל מהכנות ----------
+            csv_y = 'קטגוריה,שם,מצרכים,הוראות הכנה,הערות\nפס קר,סחוג,"עגבניות 1 ק""ג",טוחנים,תפוקה: 2 ליטר'
+            ctx = await b.new_context(viewport={'width': 390, 'height': 844}, locale='he-IL', service_workers='block')
+            await ctx.add_init_script("localStorage.setItem('rb-device-v1','" + 'a' * 32 + "')")
+            async def gs3(route):
+                if route.request.method == 'POST': return await route.fulfill(status=200, body='ok')
+                await route.fulfill(status=200, body=json.dumps({'status': 'ok', 'name': 'x', 'code': 'AAAA', 'csv': csv_y, 'extra': ''}), headers={'access-control-allow-origin': '*'})
+            await ctx.route('**/script.google.com/**', gs3); await ctx.route('**/fonts.*/**', lambda r: r.abort())
+            pg = await new_page(ctx, errs)
+            await pg.goto(base + '/recipes.html#q=%D7%A1%D7%97%D7%95%D7%92&need=5'); await pg.wait_for_selector('.card')
+            await pg.wait_for_timeout(300)
+            bt = await pg.locator('#list').inner_text()
+            check('Q2 need=5 with yield 2 opens the recipe scaled x2.5 and says so', 'x2.5' in bt.replace('×', 'x') and 'להכין 5' in bt and await pg.locator('.card.open').count() == 1, bt[:300])
             await ctx.close()
             check('Z2 no console/page errors anywhere', errs == [], errs)
             await b.close()

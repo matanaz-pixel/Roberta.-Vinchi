@@ -55,7 +55,7 @@ function makeEnv(){
   const j = s => JSON.parse(s);
   const devices = () => sheets['מכשירים'];
   const approveAll = () => devices().rows.slice(1).forEach(r => { r[3] = true; });
-  return { post, get, j, sheets, cache, mails, devices, approveAll, requests: () => sheets['בקשות תיקון'] };
+  return { ctx, post, get, j, sheets, cache, mails, devices, approveAll, requests: () => sheets['בקשות תיקון'] };
 }
 const ID = 'a'.repeat(32), ID2 = 'b'.repeat(32);
 const base = { cat: 'פס קר', title: 'סחוג', field: 'מצרכים', proposed: '2 ק"ג עגבניות', sender: 'דני', dev: ID };
@@ -311,4 +311,27 @@ test('regression: a sheet that already has 999 empty checkbox rows still works a
   assert.strictEqual(env.j(env.get({ a: 'data', d: ID2 })).status, 'pending');
   sh.rows[2][3] = true;
   assert.strictEqual(env.j(env.get({ a: 'data', d: ID2 })).status, 'ok');
+});
+
+test('stock lint: admin sees products whose recipe is not in the book; others never get the list', () => {
+  const env = withStock(approved());
+  env.sheets[STOCK_TABS.cold] = new Sheet([['מוצר', 'יחידה', 'ראשון', 'מתכון'], ['סחוג', 'ליטר', 3, 'סחוג'], ['חריף', 'ליטר', 2, 'רוטב שלא קיים'], ['מים', 'ליטר', 1, '']]);
+  assert.strictEqual(env.j(env.get({ a: 'stock', d: ID })).lint, undefined);        // לא מנהל
+  env.devices().rows[1][6] = 'מנהל';
+  const l = env.j(env.get({ a: 'stock', d: ID })).lint;
+  assert.deepStrictEqual(l, [{ st: 'cold', product: 'חריף', recipe: 'רוטב שלא קיים' }]);   // מתכון ריק לא נחשב שגיאה
+});
+
+test('weekly report: missing counts, usage vs base, pending, lint', () => {
+  const env = makeEnv();
+  const dates = ['2026-10-25', '2026-10-26', '2026-10-27', '2026-10-28'];   // א, ב, ג, ד
+  const defs = { cold: [{ name: 'סחוג', unit: 'ליטר', base: [4, 4, 4, 4, 4, 4, 4] }], hot: [], tabun: [] };
+  const c = (t, v) => ({ x: { t, by: 'דני', items: { 'סחוג': v } } });
+  const counts = { '2026-10-25': { cold: c(1, 1) }, '2026-10-26': { cold: c(2, 1) }, '2026-10-27': { cold: c(3, 1) }, '2026-10-28': {} };
+  const prep = { '2026-10-25': { cold: { x: { items: { 'סחוג': 9 } } } }, '2026-10-26': { cold: { x: { items: { 'סחוג': 9 } } } } };
+  const txt = env.ctx.buildReport({ dates, counts, prep, defs, pending: 2, lint: [{ st: 'cold', product: 'חריף', recipe: 'רוטב' }], url: 'u' });
+  assert.ok(txt.includes('פס קר: ✓ ✓ ✓ ✗'), txt);
+  assert.ok(txt.includes('לא נספר ביום: רביעי'), txt);
+  assert.ok(txt.includes('סחוג: נצרך בממוצע 9') && txt.includes('כדאי להעלות'), txt);       // 1+9-1 = 9 מול בסיס 4
+  assert.ok(txt.includes('בקשות תיקון שממתינות: 2') && txt.includes('חריף ← רוטב'), txt);
 });

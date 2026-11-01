@@ -165,6 +165,7 @@ function handleStock(id) {
   if (!r.dev) return json(r.st);
   r.st.admin = r.dev.admin === true;
   r.st.stations = {};
+  if (r.st.admin) { try { r.st.lint = stockLint(); } catch (err) { r.st.lint = []; } }
   Object.keys(STOCK_TABS).forEach(k => {
     try {
       const csv = sheetCsv(STOCK_TABS[k]);
@@ -175,6 +176,32 @@ function handleStock(id) {
     }
   });
   return json(r.st);
+}
+
+
+/** בדיקת תקינות לגיליון: מוצר בטאב מלאי שעמודת "מתכון" שלו מצביעה על שם שאין בטאב המתכונים. מוצג רק למנהל. */
+function stockLint() {
+  const titles = {};
+  [RECIPES_SHEET, EXTRA_SHEET].forEach(nm => {
+    const sh = SpreadsheetApp.getActive().getSheetByName(nm);
+    if (!sh || sh.getLastRow() < 2) return;
+    const tc = columnOf(sh, 'שם');
+    if (!tc) return;
+    sh.getRange(2, tc, sh.getLastRow() - 1, 1).getValues().forEach(r => { const t = String(r[0]).trim(); if (t) titles[t] = true; });
+  });
+  const out = [];
+  Object.keys(STOCK_TABS).forEach(k => {
+    const sh = SpreadsheetApp.getActive().getSheetByName(STOCK_TABS[k]);
+    if (!sh || sh.getLastRow() < 2) return;
+    const head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const pc = head.indexOf('מוצר'), rc = head.indexOf('מתכון');
+    if (pc < 0 || rc < 0) return;
+    sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().forEach(r => {
+      const name = String(r[pc]).trim(), rec = String(r[rc]).trim();
+      if (name && rec && !titles[rec] && out.length < 40) out.push({ st: k, product: clean(name).slice(0, 60), recipe: clean(rec).slice(0, 60) });
+    });
+  });
+  return out;
 }
 
 /** doPost {a:'request', dev, name}: בקשת גישה של מכשיר חדש. מכשיר שכבר קיים לא מקבל שורה נוספת. */
@@ -332,3 +359,120 @@ const norm = s => String(s).replace(/^'/, '').replace(/\r/g, '').split('\n').map
 const clean = s => String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');   // תווי בקרה ותווי כיוון נסתרים
 const safe = s => (typeof s === 'string' && /^[\s\u0000-\u001F]*[=+\-@]/.test(s) ? "'" + s : s);   // מונע פרשנות כנוסחה (גם אחרי רווח/טאב)
 const reply = s => ContentService.createTextOutput(s);
+
+// ============ דוח שבועי במייל ============
+// הפעלה חד-פעמית: בעורך הסקריפט בוחרים את הפונקציה setupWeeklyReport ולוחצים "הפעל". נוצר טריגר שרץ בכל יום ראשון בבוקר.
+// בדיקה ידנית: הפעלת weeklyReport. הדוח נשלח למייל של בעל הגיליון.
+const FB_URL = 'https://roberta-s-breaks-default-rtdb.europe-west1.firebasedatabase.app';
+const REPORT_DAYS = 7;
+const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+const STATION_NAMES = { cold: 'פס קר', hot: 'פס חם', tabun: 'טאבון' };
+
+function setupWeeklyReport() {
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'weeklyReport').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('weeklyReport').timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(7).create();
+}
+
+const sanitizeKeyGs = name => {
+  let s = String(name == null ? '' : name).trim().replace(/[.$#\[\]\/\u0000-\u001F\u007F]/g, '_');
+  s = Array.from(s).slice(0, 60).join('');
+  return s === '__proto__' ? '_proto_' : s;
+};
+const dayOfKey = key => new Date(key + 'T12:00:00Z').getUTCDay();
+
+function fbGet(path) {
+  const r = UrlFetchApp.fetch(FB_URL + '/' + path + '.json', { muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) return null;
+  try { return JSON.parse(r.getContentText()); } catch (e) { return null; }
+}
+
+/** מגדרות המוצרים מטאבי המלאי: { cold: [{name, unit, base:[7]}] } */
+function stockDefsFromSheets() {
+  const out = {};
+  Object.keys(STOCK_TABS).forEach(k => {
+    out[k] = [];
+    const sh = SpreadsheetApp.getActive().getSheetByName(STOCK_TABS[k]);
+    if (!sh || sh.getLastRow() < 2) return;
+    const rows = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+    const head = rows[0].map(h => String(h).trim());
+    const pi = head.indexOf('מוצר'), ui = head.indexOf('יחידה');
+    const di = DAY_NAMES.map(d => head.indexOf(d));
+    if (pi < 0 || di.some(i => i < 0)) return;
+    rows.slice(1).forEach(r => {
+      const name = String(r[pi]).trim(); if (!name) return;
+      out[k].push({ name, unit: ui >= 0 ? String(r[ui]).trim() : '', base: di.map(i => { const v = parseFloat(String(r[i]).replace(',', '.')); return isFinite(v) && v > 0 ? v : null; }) });
+    });
+  });
+  return out;
+}
+
+function latestOf(counts) {
+  let best = null;
+  Object.keys(counts || {}).forEach(id => { const c = counts[id]; if (c && typeof c.t === 'number' && (!best || c.t > best.t)) best = { id, t: c.t, by: String(c.by || ''), items: c.items || {} }; });
+  return best;
+}
+
+/** פונקציה טהורה, כדי שאפשר לבדוק אותה. data: { dates:[ישן..חדש], counts:{date:{st:{id:{t,by,items}}}}, prep:{date:{st:{id:{items}}}}, defs, pending, lint } */
+function buildReport(data) {
+  const L = [];
+  L.push('דוח שבועי: רוברטה וינצ\'י');
+  L.push(data.dates[0] + ' עד ' + data.dates[data.dates.length - 1]);
+  L.push('');
+  // 1. ימים שפסים לא נספרו
+  L.push('ספירות לפי פס (✓ נספר, ✗ לא נספר):');
+  Object.keys(STATION_NAMES).forEach(st => {
+    const cells = data.dates.map(d => latestOf(((data.counts[d] || {})[st])) ? '✓' : '✗');
+    const missing = data.dates.filter((d, i) => cells[i] === '✗' && (data.defs[st] || []).some(p => p.base[dayOfKey(d)] !== null)).map(d => DAY_NAMES[dayOfKey(d)]);
+    L.push(STATION_NAMES[st] + ': ' + cells.join(' ') + (missing.length ? '  ← לא נספר ביום: ' + missing.join(', ') : ''));
+  });
+  L.push('');
+  // 2. צריכה בפועל מול הבסיס
+  const stats = {};   // st|name -> {sum, n, baseSum, unit}
+  data.dates.forEach((d, i) => {
+    if (i === 0) return;
+    const prev = data.dates[i - 1];
+    Object.keys(STATION_NAMES).forEach(st => {
+      const a = latestOf((data.counts[prev] || {})[st]), b = latestOf((data.counts[d] || {})[st]);
+      if (!a || !b) return;
+      const pr = (((data.prep[prev] || {})[st]) || {})[a.id];
+      (data.defs[st] || []).forEach(p => {
+        const key = sanitizeKeyGs(p.name), base = p.base[dayOfKey(prev)];
+        const s0 = a.items[key], e0 = b.items[key];
+        if (typeof s0 !== 'number' || typeof e0 !== 'number' || base === null) return;
+        const used = Math.round((s0 + (pr && typeof pr.items[key] === 'number' ? pr.items[key] : 0) - e0) * 100) / 100;
+        if (used < 0) return;      // כנראה נכנסה סחורה
+        const k = st + '|' + p.name, o = stats[k] || (stats[k] = { st, name: p.name, unit: p.unit, sum: 0, n: 0, baseSum: 0 });
+        o.sum += used; o.n += 1; o.baseSum += base;
+      });
+    });
+  });
+  const rows = Object.keys(stats).map(k => stats[k]).filter(o => o.n >= 2).map(o => ({ ...o, avg: o.sum / o.n, base: o.baseSum / o.n })).map(o => ({ ...o, ratio: o.avg / o.base }));
+  const off = rows.filter(o => o.ratio > 1.25 || o.ratio < 0.6).sort((x, y) => Math.abs(Math.log(y.ratio)) - Math.abs(Math.log(x.ratio))).slice(0, 8);
+  L.push('צריכה בפועל מול הבסיס בגיליון (ממוצע, רק מוצרים עם לפחות שתי מדידות):');
+  if (!rows.length) L.push('עדיין אין מספיק ספירות רצופות כדי לחשב.');
+  else if (!off.length) L.push('הבסיסים תואמים את הצריכה (בטווח ‎-40%‎ עד ‎+25%‎).');
+  else off.forEach(o => L.push('• ' + STATION_NAMES[o.st] + ' · ' + o.name + ': נצרך בממוצע ' + (Math.round(o.avg * 10) / 10) + ' ' + o.unit + ', הבסיס ' + (Math.round(o.base * 10) / 10) + (o.ratio > 1 ? '  ← כדאי להעלות' : '  ← כדאי להוריד')));
+  L.push('');
+  L.push('בקשות תיקון שממתינות: ' + data.pending);
+  if (data.lint && data.lint.length) { L.push(''); L.push('מוצרים שהמתכון שלהם לא קיים בספר (' + data.lint.length + '):'); data.lint.slice(0, 10).forEach(x => L.push('• ' + (STATION_NAMES[x.st] || x.st) + ': ' + x.product + ' ← ' + x.recipe)); }
+  L.push('');
+  L.push('הגיליון: ' + data.url);
+  return L.join('\n');
+}
+
+function weeklyReport() {
+  const tz = 'Asia/Jerusalem', now = new Date();
+  const dates = [];
+  for (let i = REPORT_DAYS; i >= 1; i--) dates.push(Utilities.formatDate(new Date(now.getTime() - i * 86400000), tz, 'yyyy-MM-dd'));
+  const counts = {}, prep = {};
+  dates.forEach(d => { counts[d] = fbGet('stock/' + d) || {}; prep[d] = fbGet('stockPrep/' + d) || {}; });
+  let pending = 0;
+  try {
+    const rq = SpreadsheetApp.getActive().getSheetByName(REQUESTS_SHEET);
+    if (rq && rq.getLastRow() > 1) pending = rq.getRange(2, STATUS_COL, rq.getLastRow() - 1, 1).getValues().filter(r => String(r[0]).trim() === ST.PENDING).length;
+  } catch (e) {}
+  let lint = []; try { lint = stockLint(); } catch (e) {}
+  const text = buildReport({ dates, counts, prep, defs: stockDefsFromSheets(), pending, lint, url: SpreadsheetApp.getActive().getUrl() });
+  MailApp.sendEmail(Session.getEffectiveUser().getEmail(), 'דוח שבועי: מלאי והכנות', text);
+  return text;
+}

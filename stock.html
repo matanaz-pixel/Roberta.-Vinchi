@@ -24,7 +24,7 @@
   html,body{ margin:0; min-height:100%; background:var(--cream); color:var(--text); font-family:'Rubik',sans-serif; -webkit-tap-highlight-color:transparent; }
   header{ background:var(--green); padding:18px 16px 16px; text-align:center; }
   header img{ height:30px; max-width:80%; }
-  header .sub{ color:#d6e5d6; font-size:12px; letter-spacing:.18em; margin-top:8px; }
+  header .sub{ color:#d6e5d6; font-size:13px; letter-spacing:.18em; margin-top:8px; }
   .app{ width:100%; max-width:560px; margin:0 auto; padding:12px 16px calc(120px + env(safe-area-inset-bottom)); }
   .locked .app, .locked .bar{ display:none !important; }
   button, input, select{ font-family:inherit; }
@@ -88,7 +88,7 @@
   .need .q{ text-align:center; min-width:76px; }
   .need .q b{ display:block; font-size:30px; color:var(--accent); line-height:1.1; font-variant-numeric:tabular-nums; }
   .need .q span{ font-size:13px; color:var(--text-dim); }
-  .need a{ display:inline-block; margin-top:4px; color:var(--green); font-size:15px; padding:6px 0; min-height:32px; }
+  .need a{ display:inline-block; margin-top:4px; color:var(--green); font-size:15px; padding:10px 6px; min-height:44px; }
   .need .pq{ display:flex; flex-direction:column; align-items:center; gap:4px; }
   .need .pq .l2{ display:flex; gap:6px; align-items:center; }
   .need .pq input{ width:72px; height:52px; border:1.5px solid var(--line); border-radius:14px; text-align:center; font-size:24px; font-weight:500; background:#fff; color:var(--text); }
@@ -120,7 +120,7 @@
   .hst{ margin:0 0 8px; }
   .hst .t{ font-size:14px; color:var(--text-dim); margin:6px 2px; }
   .hc{ display:flex; width:100%; justify-content:space-between; gap:8px; align-items:center; text-align:right; min-height:52px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:8px 14px; margin-bottom:6px; font-size:16px; color:var(--text); cursor:pointer; }
-  .hc .tag{ font-size:12px; background:var(--green-soft); color:var(--green); border-radius:999px; padding:2px 10px; }
+  .hc .tag{ font-size:13px; background:var(--green-soft); color:var(--green); border-radius:999px; padding:2px 10px; }
 
   /* שער אישור מכשיר (כמו בספר המתכונים) */
   .gate{ max-width:560px; margin:0 auto; padding:22px 16px calc(40px + env(safe-area-inset-bottom)); }
@@ -140,7 +140,7 @@
   header{ position:relative; margin-bottom:5px; padding:16px 16px 14px; box-shadow:0 5px 0 var(--green); }
   header::after{ content:""; position:absolute; inset-inline:0; bottom:-3px; height:1px; background:var(--gold); }
   header img{ height:30px; }
-  header .sub{ font-size:11px; letter-spacing:.3em; opacity:.7; margin-top:8px; }
+  header .sub{ font-size:12px; letter-spacing:.3em; opacity:.7; margin-top:8px; }
   h1{ font-weight:300; font-size:30px; letter-spacing:-.01em; }
   .back{ border-radius:50%; border-color:#d9d1bd; }
   .chip, .tab{ border-color:#d9d1bd; }
@@ -211,6 +211,7 @@ let histDays = 7;
 let flags = { rejected: false, defsOld: false };
 let typedName = '';
 const bootAt = Date.now();
+let lintList = [];
 let isAdmin = false;           // מגיע מהשרת (עמודת "תפקיד"), נשמר עם ההגדרות. הנתונים עצמם פתוחים בכל מקרה: זו רק תצוגה
 let started = false, unsub = null, gateStatus = '', gateTimer = 0, saving = false, flushing = false;
 const curDay = () => userDay == null ? SK.dayIdx(nowDate()) : userDay;
@@ -320,13 +321,14 @@ async function boot(){
   if(!id){ showGate({ status: 'nostorage' }); return; }
   let cache = store.get(DEFS_KEY);
   if(cache && !RB.cacheValid(cache.ts, Date.now())) cache = null;
-  if(cache && !started){ isAdmin = cache.admin === true; applyDefs(cache.stations); start(); }
+  if(cache && !started){ isAdmin = cache.admin === true; lintList = Array.isArray(cache.lint) ? cache.lint : []; applyDefs(cache.stations); start(); }
   const { acc, text } = await fetchStock();
   if(acc && acc.status !== 'ok'){ lockOut(acc); return; }
   if(acc){
     flags.defsOld = false;
     isAdmin = acc.admin === true;
-    store.set(DEFS_KEY, { ts: Date.now(), stations: acc.stations || {}, admin: isAdmin });
+    store.set(DEFS_KEY, { ts: Date.now(), stations: acc.stations || {}, admin: isAdmin, lint: Array.isArray(acc.lint) ? acc.lint : [] });
+    lintList = Array.isArray(acc.lint) ? acc.lint : [];
     applyDefs(acc.stations || {});
     if(!started) start(); else route();
     renderBanners();
@@ -662,7 +664,7 @@ function viewPrep(st, date, id){
     info.append(el('div', 'nm', it.name), el('div', 'sub', `יש ${SK.fmtQty(it.have)} מתוך ${SK.fmtQty(it.base)}${it.unit ? ' ' + it.unit : ''} · חסר ${SK.fmtQty(it.need)}`));
     if(it.note) info.append(el('div', 'sub', it.note));
     const cov = el('div', 'cov'); info.append(cov);
-    const a = el('a', '', 'פתח מתכון'); a.href = './recipes.html#q=' + encodeURIComponent(it.recipe || it.name); info.append(a);
+    const a = el('a', 'rlink', 'פתח מתכון'); const setLink = () => { a.href = './recipes.html#q=' + encodeURIComponent(it.recipe || it.name) + (chosen[it.name] > 0 ? '&need=' + chosen[it.name] : ''); }; info.append(a);
     const pq = el('div', 'pq'); const l2 = el('div', 'l2');
     const minus = el('button', 'step', '−'); minus.type = 'button'; minus.setAttribute('aria-label', 'הפחת ' + it.name);
     const plus = el('button', 'step', '+'); plus.type = 'button'; plus.setAttribute('aria-label', 'הוסף ' + it.name);
@@ -672,6 +674,7 @@ function viewPrep(st, date, id){
     inp.enterKeyHint = 'done'; inp.addEventListener('focus', () => setTimeout(() => { try{ inp.select(); }catch(e){} }, 0));
     const warnEl = el('div', 'warn'); warnEl.hidden = true; info.append(warnEl);
     const showCov = () => {
+      setLink();
       const tot = it.have + chosen[it.name], cd = SK.coverageDays(prodByName[it.name], tot, day);
       cov.textContent = SK.coverage(prodByName[it.name], tot, day);
       cov.className = 'cov' + (cd && !cd.week ? (cd.days.length <= 1 ? ' lvl-bad' : cd.days.length === 2 ? ' lvl-warn' : '') : '');
@@ -744,6 +747,38 @@ function watchPrep(date){
   ref.on('value', cb, () => { if(prepWatch.date === date){ prepWatch.data = normPrep(null); route(); } });
   prepWatch.off = () => ref.off('value', cb);
 }
+const prevPrepCache = Object.create(null);
+function loadPrevPrep(d){
+  if(prevPrepCache[d] !== undefined || !fbReady) return;
+  prevPrepCache[d] = null;
+  db.ref('stockPrep/' + d).once('value').then(sn => { prevPrepCache[d] = normPrep(sn.val()); route(); }, () => { prevPrepCache[d] = normPrep(null); route(); });
+}
+function consumptionBlock(stKey, date, prods){
+  const prev = SK.addDays(date, -1);
+  const pd = histCache[prev], pp = prevPrepCache[prev];
+  const box = el('details', 'adm');
+  box.append(el('summary', '', 'צריכה מאז הספירה של אתמול'));
+  if(!fbReady || pd === null || pp === null || pd === undefined || pp === undefined){ box.append(el('div', 'dim', 'טוען...')); return box; }
+  const cur = SK.latestCount(countsFor(date, stKey)), old = SK.latestCount((pd || {})[stKey]);
+  if(!cur || !old){ box.append(el('div', 'dim', 'אין ספירה גם אתמול וגם היום, אז אי אפשר לחשב.')); return box; }
+  const rec = ((pp || {})[stKey] || {})[old.id];
+  const rows = SK.consumption(prods, old.items, rec ? rec.items : null, cur.items, rec ? rec.day : dayOfDateKey(prev));
+  if(!rows.length){ box.append(el('div', 'dim', 'אין מוצרים שנספרו בשתי הספירות.')); return box; }
+  const body = el('div', 'body');
+  for(const r of rows){
+    const u = r.unit ? ' ' + r.unit : '';
+    let txt, cls = 'dl';
+    if(r.odd){ txt = 'לא מסתדר (נכנסה סחורה, או שההכנה לא בוצעה)'; }
+    else{
+      txt = 'נצרך ' + SK.fmtQty(r.used) + u + (r.base ? ' · בסיס ' + SK.fmtQty(r.base) : '');
+      if(r.base && r.used > r.base * 1.25) { txt += ' · מעל הבסיס'; cls += ' short'; }
+      else if(r.base && r.used < r.base * 0.6) txt += ' · הרבה מתחת לבסיס';
+    }
+    const row = el('div', cls); row.append(el('span', '', r.name), el('span', '', txt)); body.append(row);
+  }
+  body.append(el('div', 'cv', 'חישוב: מה שהיה בספירה של אתמול + מה שהוחלט להכין, פחות מה שנשאר עכשיו.' + (rows.some(x => !x.prepKnown) ? ' אם לא נשלחה החלטת הכנה, ההכנה נחשבת אפס.' : '') + ' ההכנה נחשבת כאילו בוצעה במלואה.'));
+  box.append(body); return box;
+}
 function viewAdmin(dateArg){
   const date = dateArg && validDateKey(dateArg) ? dateArg : today;
   const out = [topBar('מנהל', 'מה כל פס ספר והחליט להכין. לקריאה בלבד.', '#/')];
@@ -753,7 +788,14 @@ function viewAdmin(dateArg){
   const chip = (label, k) => { const b = el('button', 'chip', label); b.type = 'button'; b.setAttribute('aria-pressed', String(date === k)); b.onclick = () => go('#/admin/' + k); return b; };
   bar.append(chip('היום', today), chip('אתמול', SK.addDays(today, -1)), inp);
   out.push(bar, el('div', 'hday', fmtDate(date)));
-  loadHist(date); watchPrep(date);
+  if(lintList.length){
+    const lb = el('div', 'banner');
+    lb.append(el('b', '', `בגיליון יש ${lintList.length} מוצרים שהמתכון שלהם לא קיים בספר, אז "פתח מתכון" לא ימצא אותם:`));
+    for(const x of lintList.slice(0, 8)) lb.append(el('div', '', `${(SK.STATIONS.find(s => s.key === x.st) || {}).name || x.st}: ${x.product} ← "${x.recipe}"`));
+    if(lintList.length > 8) lb.append(el('div', '', `ועוד ${lintList.length - 8}`));
+    out.push(lb);
+  }
+  loadHist(date); watchPrep(date); loadHist(SK.addDays(date, -1)); loadPrevPrep(SK.addDays(date, -1));
   if((date !== today && histCache[date] === null) || prepWatch.data === null){ out.push(el('div', 'dim', 'טוען...')); return out; }
   const unitOf = u => u ? ' ' + u : '';
   for(const s of SK.STATIONS){
@@ -798,6 +840,7 @@ function viewAdmin(dateArg){
       }
       sec.append(det);
     }
+    sec.append(consumptionBlock(s.key, date, prods));
     const lk = el('a', 'link', 'פתח את רשימת ההכנות של הספירה'); lk.href = `#/prep/${s.key}/${date}/${encodeURIComponent(act.id)}`;
     sec.append(lk);
     out.push(sec);

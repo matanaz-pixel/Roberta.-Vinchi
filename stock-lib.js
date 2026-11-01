@@ -197,6 +197,22 @@ function prepList(products, items, day){
   prep.sort((a, b) => ratio(b) - ratio(a) || a.name.localeCompare(b.name, 'he'));
   return { prep, enough, uncounted };
 }
+/** צריכה בפועל בין שתי ספירות: מה שהיה בספירה הקודמת + מה שהוחלט להכין, פחות מה שנשאר בספירה הנוכחית.
+ *  prevItems/curItems: פריטי הספירה (לפי מפתח מנוקה). prepItems: פריטי החלטת ההכנה של הספירה הקודמת (יכול להיות null).
+ *  מחזיר רק מוצרים שנספרו בשתי הספירות. used שלילי = כנראה נכנסה סחורה או שההכנה לא בוצעה כפי שהוחלט, ולכן לא מחושב. */
+function consumption(products, prevItems, prepItems, curItems, prevDay){
+  const out = [];
+  const a = isObj(prevItems) ? prevItems : {}, c = isObj(curItems) ? curItems : {}, pr = isObj(prepItems) ? prepItems : null;
+  for(const p of Array.isArray(products) ? products : []){
+    const key = sanitizeKey(p.name);
+    const s0 = hasOwn(a, key) ? a[key] : undefined, e0 = hasOwn(c, key) ? c[key] : undefined;
+    if(typeof s0 !== 'number' || typeof e0 !== 'number' || !isFinite(s0) || !isFinite(e0)) continue;
+    const prepped = pr && hasOwn(pr, key) && typeof pr[key] === 'number' && isFinite(pr[key]) ? pr[key] : null;
+    const raw = round2(s0 + (prepped || 0) - e0);
+    out.push({ name: p.name, unit: p.unit, start: s0, prep: prepped, end: e0, used: raw >= 0 ? raw : null, odd: raw < 0, prepKnown: prepped !== null, base: Number.isInteger(prevDay) ? baseFor(p, prevDay) : null });
+  }
+  return out;
+}
 function fmtQty(n){
   if(typeof n !== 'number' || !isFinite(n)) return '';
   return String(round2(n));
@@ -261,6 +277,6 @@ function formatWhatsApp({ station, dateKey: dk, dayName, by, rows, prep, uncount
   return out.join('\n');
 }
 
-const api = { STATIONS, DAYS, HEADERS, parseDefs, defsProblem, baseFor, dayIdx, dateKey, addDays, sanitizeKey, productsForDay, validateCount, latestCount, prepList, fmtQty, coverageDays, coverage, formatWhatsApp };
+const api = { STATIONS, DAYS, HEADERS, parseDefs, defsProblem, baseFor, dayIdx, dateKey, addDays, sanitizeKey, productsForDay, validateCount, latestCount, prepList, fmtQty, coverageDays, coverage, formatWhatsApp, consumption };
 if(typeof module === 'object' && module.exports) module.exports = api; else root.SK = api;
 })(typeof self !== 'undefined' ? self : this);

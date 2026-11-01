@@ -493,3 +493,16 @@ test('formatWhatsApp: מוצר חסר שהטבח בחר לא להכין לא מ�
   assert.match(t, /רוטב: יש 1 ק״ג, לא מכינים \(חסר 3 ק״ג\), מספיק לחלק מהיום/);
   assert.doesNotMatch(t, /אין צורך להכין/);
 });
+
+test('consumption: start + prep - end, per product counted twice', () => {
+  const prods = [{ name: 'סחוג', unit: 'ליטר', base: [4,4,4,4,6,6,3] }, { name: 'פסטו', unit: 'ליטר', base: [2,2,2,2,2,2,2] }, { name: 'מטבוחה', unit: 'ק"ג', base: [3,3,3,3,3,4,null] }];
+  const r = SK.consumption(prods, { 'סחוג': 1, 'פסטו': 0 }, { 'סחוג': 9 }, { 'סחוג': 4, 'פסטו': 1, 'מטבוחה': 2 }, 3);
+  assert.deepStrictEqual(r.map(x => x.name), ['סחוג', 'פסטו']);          // מטבוחה לא נספרה בראשונה
+  assert.strictEqual(r[0].used, 6); assert.strictEqual(r[0].prep, 9); assert.strictEqual(r[0].prepKnown, true); assert.strictEqual(r[0].base, 4);
+  assert.strictEqual(r[1].prepKnown, false);
+  assert.strictEqual(r[1].used, null); assert.strictEqual(r[1].odd, true);   // 0 + 0 - 1 < 0
+});
+test('consumption tolerates missing/garbage input', () => {
+  assert.deepStrictEqual(SK.consumption(null, null, null, null), []);
+  assert.deepStrictEqual(SK.consumption([{ name: 'x', base: [1,1,1,1,1,1,1] }], { x: 'a' }, null, { x: 1 }, 0), []);
+});
