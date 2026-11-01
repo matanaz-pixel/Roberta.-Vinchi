@@ -156,6 +156,70 @@
   .progress{ letter-spacing:.02em; }
   .bar, .pbar{ border-top-color:var(--line); }
   .need{ border-radius:12px; }
+
+  /* ===== עיצוב מהודק v3: מבנה ולא רק צבע ===== */
+  .app{ padding-top:4px; }
+  .eyebrow, .sect, .grp{ font-size:12px; letter-spacing:.2em; color:var(--text-dim); font-weight:500; }
+  .hero{ padding:20px 2px 0; }
+  .hero-row{ display:flex; align-items:baseline; justify-content:space-between; }
+  .hero h1{ font-size:60px; font-weight:300; letter-spacing:-.02em; line-height:1.05; margin:2px 0 0; color:var(--green); }
+  .hdate{ font-size:18px; color:var(--text-dim); direction:ltr; }
+  .days.seg{ display:flex; flex-wrap:nowrap; gap:0; background:#fff; border:1px solid #d9d1bd; border-radius:999px; padding:3px; margin:14px 0 6px; }
+  .days.seg .chip{ flex:1; min-width:0; border:0; background:transparent; min-height:42px; padding:0 4px; font-size:14px; color:var(--text-dim); text-align:center; text-align-last:center; }
+  .days.seg .chip[aria-pressed=true]{ background:var(--green); color:#fff; font-weight:500; }
+  .days.seg select.chip{ appearance:none; -webkit-appearance:none; }
+  .sect{ display:flex; align-items:center; gap:12px; margin:22px 0 10px; }
+  .sect::after{ content:""; flex:1; height:1px; background:linear-gradient(to left,#d9d1bd,transparent); }
+  .stations{ gap:10px; }
+  .st{ display:flex; flex-direction:column; justify-content:space-between; gap:12px; min-height:92px; padding:14px 16px; box-shadow:none; }
+  .st-top{ display:flex; justify-content:space-between; align-items:baseline; }
+  .st-tag{ font-size:13px; font-weight:500; color:var(--green); }
+  .st-tag.bad{ color:var(--accent); } .st-tag.ok{ color:var(--ok); }
+  .st-bot{ display:flex; align-items:center; gap:10px; }
+  .st-bot p{ margin:0; font-size:13px; flex:1; min-width:0; }
+  .segs{ display:flex; gap:3px; width:64px; flex:none; }
+  .segs i, .psegs i{ flex:1; height:4px; border-radius:2px; background:var(--line); }
+  .segs i.on, .psegs i.on{ background:var(--ok); }
+  .tabnav{ position:fixed; inset-inline:0; bottom:0; max-width:560px; margin:0 auto; display:flex; background:var(--cream); border-top:1px solid var(--line); padding:8px 16px calc(14px + env(safe-area-inset-bottom)); z-index:5; }
+  .tabnav .tn{ flex:1; text-align:center; font-size:13px; color:var(--text-dim); padding:12px 0; min-height:44px; text-decoration:none; background:none; border:0; border-top:2px solid transparent; margin-top:-9px; cursor:pointer; }
+  .tabnav .tn.on{ color:var(--green); font-weight:600; border-top-color:var(--green); }
+  .top{ gap:12px; margin-bottom:6px; }
+  .top .ttl{ display:flex; flex-direction:column; }
+  .top .ttl .dim{ order:-1; font-size:12px; letter-spacing:.12em; margin:0; }
+  .top .ttl h1{ font-size:32px; font-weight:300; margin:0; line-height:1.1; color:var(--green); }
+  .back{ min-width:46px; min-height:46px; }
+  .progress{ display:flex; flex-direction:column; gap:8px; margin:8px 0 12px; }
+  .pcount{ font-size:14px; color:var(--text-dim); }
+  .psegs{ display:flex; gap:4px; } .psegs i{ height:3px; }
+  .row{ padding:12px 14px; }
+  .row .l1 .nm{ font-size:19px; font-weight:500; }
+  .row .l2{ gap:8px; margin-top:8px; }
+  .row .step{ width:52px; height:52px; }
+  .row input{ height:52px; font-size:28px; }
+  .grp{ margin:18px 0 8px; }
+  .need{ flex-direction:column; align-items:stretch; gap:4px; border-radius:12px; padding:12px 14px; }
+  .need.wrapcol{ flex-wrap:nowrap; }
+  .need .info{ display:contents; }
+  .need .nm{ order:1; font-size:19px; font-weight:500; }
+  .need .sub{ order:2; font-size:13px; }
+  .need .pq{ order:3; flex-direction:row; align-items:center; gap:8px; margin-top:6px; }
+  .need .pq > span{ font-size:12px; letter-spacing:.06em; max-width:56px; line-height:1.2; }
+  .need .pq{ min-width:0; width:100%; }
+  .need .pq .l2{ flex:1; min-width:0; display:flex; gap:8px; align-items:center; }
+  .need .pq input{ flex:1; min-width:0; width:auto; height:52px; border:0; background:transparent; font-size:38px; font-weight:300; color:var(--green); padding:0; }
+  .need .pq .step{ width:48px; height:48px; border-radius:10px; border-width:1.5px; flex:none; }
+  .need .pq .l2 .step:nth-of-type(2){ background:var(--green); color:#fff; border-color:var(--green); }
+  .strip{ order:4; display:flex; gap:4px; margin-top:6px; }
+  .strip .sc{ flex:1; text-align:center; }
+  .strip .sb{ display:block; position:relative; height:26px; border-radius:6px; background:#f1ece0; overflow:hidden; border:1px solid transparent; }
+  .strip .sb.off{ background:transparent; border:1px dashed #cfc8b8; }
+  .strip .sb i{ position:absolute; inset-inline:0; bottom:0; background:var(--green); height:0; }
+  .strip .sb i.part{ background:var(--accent); }
+  .strip .sl{ display:block; margin-top:3px; font-size:12px; color:#8a948a; }
+  .need .cov{ order:5; font-size:14px; margin-top:6px; }
+  .need .rlink{ order:6; align-self:flex-start; }
+  .need .warn{ order:7; }
+  .adm{ border-radius:12px; }
 </style>
 </head>
 <body>
@@ -490,7 +554,7 @@ function topBar(title, sub, backHash){
 }
 function dayBar(){
   const d0 = SK.dayIdx(nowDate()), d1 = (d0 + 1) % 7;
-  const bar = el('div', 'days'); bar.setAttribute('role', 'group'); bar.setAttribute('aria-label', 'יום הבסיס');
+  const bar = el('div', 'days seg'); bar.setAttribute('role', 'group'); bar.setAttribute('aria-label', 'יום הבסיס');
   const chip = (label, day) => {
     const b = el('button', 'chip', label); b.type = 'button';
     b.setAttribute('aria-pressed', String(curDay() === day && (userDay != null ? true : day === d0)));
@@ -513,29 +577,46 @@ function prepFor(st, counts, day){
 
 // ============ מסך ראשי ============
 function viewHome(){
-  const out = [el('h1', '', 'מלאי והכנות'), el('div', 'dim', 'בסיס של יום ' + SK.DAYS[curDay()] + '. מי שסופר בפס מקבל מיד רשימת הכנות.'), dayBar()];
+  const hero = el('div', 'hero');
+  hero.append(el('div', 'eyebrow', 'יום הבסיס'));
+  const hr = el('div', 'hero-row'); hr.append(el('h1', '', 'יום ' + SK.DAYS[curDay()]), el('span', 'hdate', fmtDate(today).replace(/^[^\d]*/, '')));
+  hero.append(hr);
+  const out = [hero, dayBar(), el('div', 'sect', 'הפסים')];
   const wrap = el('div', 'stations');
   for(const s of SK.STATIONS){
     const d = defs[s.key] || {};
     const n = SK.productsForDay(d.products || [], curDay()).length;
     const { act, list } = prepFor(s.key, countsFor(today, s.key), curDay());
     const b = el('button', 'st' + (act ? ' done' : '')); b.type = 'button';
-    b.append(el('h2', '', s.name));
-    let sub;
+    const top = el('div', 'st-top'); top.append(el('h2', '', s.name));
+    let sub, tag = '', tagCls = '';
     if(d.missing) sub = 'אין הגדרות מוצרים לפס הזה בגיליון';
     else if(d.empty) sub = 'עדיין אין מוצרים בטאב של הפס הזה בגיליון';
     else if(d.error) sub = 'ההגדרות בגיליון לא תקינות';
     else if(!n) sub = 'אין מוצרים לספירה ביום ' + SK.DAYS[curDay()];
-    else if(act) sub = `נספר ב-${hhmm(act.t)} על ידי ${act.by} · ${list.prep.length} להכין` + (list.uncounted.length ? ` · ${list.uncounted.length} לא נספרו` : '');
-    else sub = `עדיין לא נספר היום · ${n === 1 ? 'מוצר אחד' : n + ' מוצרים'}`;
-    b.append(el('p', '', sub));
+    else if(act){
+      sub = `נספר ב-${hhmm(act.t)} על ידי ${act.by} · ${list.prep.length} להכין` + (list.uncounted.length ? ` · ${list.uncounted.length} לא נספרו` : '');
+      tag = list.prep.length ? list.prep.length + ' להכין' : 'הכול מספיק'; tagCls = list.prep.length ? ' bad' : ' ok';
+    }else{ sub = `עדיין לא נספר היום · ${n === 1 ? 'מוצר אחד' : n + ' מוצרים'}`; tag = 'לספור'; }
+    if(tag) top.append(el('span', 'st-tag' + tagCls, tag));
+    b.append(top);
+    const bot = el('div', 'st-bot');
+    if(n){
+      const segs = el('span', 'segs'); const filled = act ? n - list.uncounted.length : 0;
+      for(let i = 0; i < n && i < 12; i++) segs.append(el('i', i < filled ? 'on' : ''));
+      bot.append(segs);
+    }
+    bot.append(el('p', '', sub)); b.append(bot);
     b.onclick = () => go(act ? '#/prep/' + s.key : '#/count/' + s.key);
     wrap.append(b);
   }
   out.push(wrap);
-  const h = el('button', 'link', 'היסטוריה ודוח'); h.type = 'button'; h.onclick = () => go('#/history');
-  out.push(h);
-  if(isAdmin){ const a = el('button', 'link', 'מנהל: מה הפסים הזינו'); a.type = 'button'; a.onclick = () => go('#/admin'); out.push(a); }
+  const nav = el('nav', 'tabnav'); nav.setAttribute('aria-label', 'ניווט');
+  const here = el('span', 'tn on', 'הפסים'); here.setAttribute('aria-current', 'page');
+  const h = el('button', 'link tn', 'היסטוריה'); h.type = 'button'; h.onclick = () => go('#/history');
+  nav.append(here, h);
+  if(isAdmin){ const a = el('button', 'link tn', 'מנהל'); a.type = 'button'; a.setAttribute('aria-label', 'מנהל: מה הפסים הזינו'); a.onclick = () => go('#/admin'); nav.append(a); }
+  out.push(nav);
   return out;
 }
 
@@ -553,7 +634,7 @@ function viewCount(st){
   const draft = getDraft(date, st);
   const vals = Object.assign({}, draft ? draft.items : {});
   const errBox = el('div', 'banner err'); errBox.hidden = true; errBox.setAttribute('role', 'alert');
-  const progress = el('div', 'progress');
+  const progress = el('div', 'progress'); const pcount = el('span', 'pcount'); const psegs = el('span', 'psegs'); progress.append(pcount, psegs);
   let sender = '';
   try{ sender = localStorage.getItem(SENDER_KEY) || ''; }catch(e){}
   const nameIn = el('input'); nameIn.type = 'text'; nameIn.maxLength = 40; nameIn.value = sender || typedName; nameIn.autocomplete = 'name'; nameIn.id = 'sender-in';
@@ -567,7 +648,8 @@ function viewCount(st){
   const saveDraft = () => putDraft(date, st, vals);
   const refresh = () => {
     const n = prods.filter(p => vals[SK.sanitizeKey(p.name)] !== undefined && String(vals[SK.sanitizeKey(p.name)]).trim() !== '').length;
-    progress.textContent = `נספרו ${n} מתוך ${prods.length}`;
+    pcount.textContent = `נספרו ${n} מתוך ${prods.length}`;
+    psegs.replaceChildren(...prods.map((p, i) => el('i', i < n ? 'on' : '')));
     save.disabled = saving;
   };
   for(const p of prods){
@@ -663,7 +745,7 @@ function viewPrep(st, date, id){
     const r = el('div', 'need'); const info = el('div', 'info');
     info.append(el('div', 'nm', it.name), el('div', 'sub', `יש ${SK.fmtQty(it.have)} מתוך ${SK.fmtQty(it.base)}${it.unit ? ' ' + it.unit : ''} · חסר ${SK.fmtQty(it.need)}`));
     if(it.note) info.append(el('div', 'sub', it.note));
-    const cov = el('div', 'cov'); info.append(cov);
+    const cov = el('div', 'cov'); const strip = el('div', 'strip'); info.append(strip, cov);
     const a = el('a', 'rlink', 'פתח מתכון'); const setLink = () => { a.href = './recipes.html#q=' + encodeURIComponent(it.recipe || it.name) + (chosen[it.name] > 0 ? '&need=' + chosen[it.name] : ''); }; info.append(a);
     const pq = el('div', 'pq'); const l2 = el('div', 'l2');
     const minus = el('button', 'step', '−'); minus.type = 'button'; minus.setAttribute('aria-label', 'הפחת ' + it.name);
@@ -677,6 +759,18 @@ function viewPrep(st, date, id){
       setLink();
       const tot = it.have + chosen[it.name], cd = SK.coverageDays(prodByName[it.name], tot, day);
       cov.textContent = SK.coverage(prodByName[it.name], tot, day);
+      strip.replaceChildren(...(() => {
+        const cells = []; const days = cd ? cd.days : [];
+        for(let i = 0; i < 7; i++){
+          const dn = (day + i) % 7, x = days.find(z => z.day === dn);
+          const c = el('span', 'sc'); const bx = el('span', 'sb'); const fr = el('i', '');
+          if(x) fr.style.height = Math.round(Math.min(1, x.got / x.need) * 100) + '%'; else if(cd && cd.week && SK.baseFor(prodByName[it.name], dn) !== null) fr.style.height = '100%';
+          if(x && x.got < x.need) fr.className = 'part';
+          if(SK.baseFor(prodByName[it.name], dn) === null) bx.classList.add('off');
+          bx.append(fr); c.append(bx, el('span', 'sl', 'אבגדהוש'[dn])); cells.push(c);
+        }
+        return cells;
+      })());
       cov.className = 'cov' + (cd && !cd.week ? (cd.days.length <= 1 ? ' lvl-bad' : cd.days.length === 2 ? ' lvl-warn' : '') : '');
       const big = chosen[it.name] > it.base * 2; warnEl.hidden = !big;
       if(big) warnEl.textContent = `הרבה יותר מהיעד (${SK.fmtQty(it.base)}${it.unit ? ' ' + it.unit : ''}). בטוחים?`;

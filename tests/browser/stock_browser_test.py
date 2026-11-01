@@ -158,6 +158,7 @@ async def main():
             check('B3 viewport 390: no horizontal scroll', await pg.evaluate('document.documentElement.scrollWidth <= 390'))
             await pg.screenshot(path='/tmp/stock_home.png')
 
+            await pg.screenshot(path='/tmp/stock_home.png')
             await pg.locator('.st', has_text='פס קר').click(); await pg.wait_for_selector('.row')
             names = await pg.locator('.row .nm').all_inner_texts()
             check('C1 count shows only products with a base today (פסטו hidden)', len(names) == 4 and 'פסטו' not in names, names)
@@ -180,6 +181,7 @@ async def main():
             c1 = w[0]['val'] if w else {}
             check('D2 stored shape {t,by,items}, sanitized keys, no xss key', set(c1) == {'t', 'by', 'items'} and c1['by'] == 'דני' and set(c1['items']) == {'סחוג', 'מטבוחה', 'חומוס'} and c1['items']['חומוס'] == 5.5, c1)
             check('D3 written under today date and station', w and w[0]['path'].startswith('stock/2026-10-28/cold/'), w and w[0]['path'])
+            await pg.screenshot(path='/tmp/stock_prep.png')
             body = await pg.locator('#view').inner_text()
             needs = await pg.locator('.need .nm').all_inner_texts()
             check('E1 prep: to-prepare list sorted by need ratio (סחוג then מטבוחה)', needs == ['סחוג', 'מטבוחה'], needs)
