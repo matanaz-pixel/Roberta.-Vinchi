@@ -430,6 +430,32 @@ async def main():
             bt = await pg.locator('#list').inner_text()
             check('Q2 need=5 with yield 2 opens the recipe scaled x2.5 and says so', 'x2.5' in bt.replace('×', 'x') and 'להכין 5' in bt and await pg.locator('.card.open').count() == 1, bt[:300])
             await ctx.close()
+            # ---------- בקשת תיקון: הוספה והסרה של רכיב ----------
+            csv_f = 'קטגוריה,שם,מצרכים,הוראות הכנה,הערות\nפס קר,סחוג,"1 ק""ג עגבניות\n400 גרם פלפל חריף\nשום","טוחנים",'
+            ctx = await b.new_context(viewport={'width': 390, 'height': 844}, locale='he-IL', service_workers='block')
+            await ctx.add_init_script("localStorage.setItem('rb-device-v1','" + 'a' * 32 + "')")
+            posts = []
+            async def gs4(route):
+                if route.request.method == 'POST':
+                    posts.append(json.loads(route.request.post_data)); return await route.fulfill(status=200, body='ok', headers={'access-control-allow-origin': '*'})
+                await route.fulfill(status=200, body=json.dumps({'status': 'ok', 'name': 'x', 'code': 'AAAA', 'csv': csv_f, 'extra': ''}), headers={'access-control-allow-origin': '*'})
+            await ctx.route('**/script.google.com/**', gs4); await ctx.route('**/fonts.*/**', lambda r: r.abort())
+            pg = await new_page(ctx, errs)
+            await pg.goto(base + '/recipes.html'); await pg.wait_for_selector('.card')
+            await pg.locator('.foot-btn', has_text='בקשת תיקון').click(); await pg.wait_for_selector('dialog.fix .pick-item')
+            await pg.locator('.pick-item').first.click(); await pg.wait_for_selector('.addbox')
+            await pg.fill('.addbox input[aria-label="כמות של הרכיב החדש"]', '200'); await pg.fill('.addbox input[aria-label="יחידה"]', 'גרם'); await pg.fill('.addbox input[aria-label="שם הרכיב החדש"]', 'שמן זית')
+            await pg.select_option('.addbox select', '0')            # אחרי השורה הראשונה
+            await pg.locator('.add-btn').click()
+            await pg.fill('.addbox input[aria-label="שם הרכיב החדש"]', 'מלח'); await pg.select_option('.addbox select', '-1'); await pg.locator('.add-btn').click()   # בסוף
+            await pg.locator('.qrow', has_text='שום').locator('.rm-btn').first.click()
+            check('F1 change counter shows 3 changes (2 adds, 1 removal)', '3 שינויים' in await pg.locator('.qcount').inner_text())
+            await pg.fill('dialog.fix input[placeholder*="השם שלך"]', 'דני')
+            await pg.locator('.fix-actions .send').click(); await pg.wait_for_timeout(500)
+            prop = posts[-1]['proposed'] if posts else ''
+            check('F2 proposed = original with add after line 1, removal, add at end', prop == '1 ק"ג עגבניות\n200 גרם שמן זית\n400 גרם פלפל חריף\nמלח', prop)
+            check('F3 request goes to the ingredients field of the right recipe', posts and posts[-1]['field'] == 'מצרכים' and posts[-1]['title'] == 'סחוג', posts[-1:] )
+            await ctx.close()
             check('Z2 no console/page errors anywhere', errs == [], errs)
             await b.close()
     finally:

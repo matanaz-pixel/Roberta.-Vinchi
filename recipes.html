@@ -281,6 +281,18 @@
   .cook-btn{ min-height:52px; letter-spacing:.02em; }
   .tbtn{ border-radius:999px; border-color:var(--green); font-weight:500; }
   .timers{ border-top:1px solid var(--gold); }
+
+  .qrow .rm-btn{ margin-inline-start:auto; min-width:56px; min-height:44px; border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--text-dim); font:inherit; font-size:13px; cursor:pointer; }
+  .qrow.rmd .rest, .qrow.rmd .pre{ text-decoration:line-through; opacity:.5; }
+  .qrow.rmd input{ opacity:.4; }
+  .qrow.add{ background:var(--green-soft); border-radius:10px; padding-inline:8px; margin-top:4px; }
+  .addbox{ margin-top:10px; padding-top:6px; border-top:1px dashed var(--line); }
+  .addbox .arow{ display:flex; gap:6px; margin:6px 0; }
+  .addbox input, .addbox select{ min-height:44px; border:1px solid var(--line); border-radius:10px; font:inherit; font-size:16px; padding:0 8px; background:#fff; color:var(--text); min-width:0; }
+  .addbox .arow input:nth-child(1){ width:70px; text-align:center; } .addbox .arow input:nth-child(2){ width:80px; } .addbox .arow input:nth-child(3){ flex:1; }
+  .addbox select{ width:100%; }
+  .addbox input.bad{ border-color:#c0392b; background:#fde8e3; }
+  .addbox .add-btn{ margin-top:8px; min-height:44px; padding:0 16px; border:1.5px solid var(--green); border-radius:999px; background:#fff; color:var(--green); font:inherit; font-size:15px; font-weight:500; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -1011,29 +1023,55 @@ function openFix(preset){
   work.append(chosen, seg, pQty, pTxt, pYld, l3, l4, hp);
   work.hidden = true;
 
-  let qrows = [], txt = null, yin = null, pin = null, yIdx = -1, yBase = '', pIdx = -1, pBase = '';
+  let qrows = [], irows = [], adds = [], txt = null, yin = null, pin = null, yIdx = -1, yBase = '', pIdx = -1, pBase = '';
   function choose(x){
     r = x; pick.hidden = true; work.hidden = false; send.hidden = false; msg.hidden = true;
     bQty.hidden = !!r.variants;                                       // מתכון עם גרסאות כמות: תיקון כמויות אצל השף בלבד
     chosen.replaceChildren(el('div', 'ct', r.title), el('small', '', r.cat));
     if(!preset){ const sw = el('button', 'swap', 'החלפה'); sw.type = 'button'; sw.onclick = () => { work.hidden = true; send.hidden = true; pick.hidden = false; pickIn.focus(); }; chosen.append(sw); }
     // כמויות: שדה לכל מצרך שיש לו כמות בתחילת השורה
-    pQty.replaceChildren(el('div', 'hint2', 'הכמויות כפי שהן בספר (בלי הכפלה). משנים רק את המספר.'));
+    pQty.replaceChildren(el('div', 'hint2', 'הכמויות כפי שהן בספר (בלי הכפלה). אפשר לשנות מספר, להסיר רכיב או להוסיף רכיב חדש.'));
     const box = el('div', 'qlist');
+    irows = []; adds = [];
     qrows = (r.variants ? [] : r.ingredients).map((line, idx) => {
       if(line.endsWith(':')){ box.append(el('div', 'qsub', line)); return null; }
       const s = splitQty(line), row = el('div', 'qrow');
-      if(!s){ row.append(el('span', 'rest', line)); row.classList.add('plain'); box.append(row); return null; }
+      const ir = { idx, row, removed: false }; irows.push(ir);
+      const rm = el('button', 'rm-btn', 'הסר'); rm.type = 'button'; rm.setAttribute('aria-label', 'הסר: ' + line);
+      rm.onclick = () => { ir.removed = !ir.removed; row.classList.toggle('rmd', ir.removed); rm.textContent = ir.removed ? 'שחזר' : 'הסר'; rm.setAttribute('aria-label', (ir.removed ? 'שחזר: ' : 'הסר: ') + line); count(); };
+      if(!s){ row.append(el('span', 'rest', line), rm); row.classList.add('plain'); box.append(row); return null; }
       const inp = el('input'); inp.type = 'text'; inp.inputMode = 'decimal'; inp.value = s.qty; inp.setAttribute('aria-label', 'כמות: ' + line);
       const q = { s, inp, idx, row };
       inp.addEventListener('input', () => { const v = inp.value.trim(); row.classList.toggle('chg', v !== s.qty); row.classList.remove('bad'); count(); });
-      row.append(...(s.pre ? [el('span', 'pre', s.pre)] : []), inp, el('span', 'rest', s.rest.trim()));
+      row.append(...(s.pre ? [el('span', 'pre', s.pre)] : []), inp, el('span', 'rest', s.rest.trim()), rm);
       box.append(row); return q;
     }).filter(Boolean);
     if(!r.ingredients.length) box.append(el('div', 'pick-none', 'אין מצרכים במתכון הזה'));
     const cnt = el('div', 'qcount'); cnt.hidden = true;
-    function count(){ const n = qrows.filter(q => q.inp.value.trim() !== q.s.qty).length; cnt.hidden = !n; cnt.textContent = n + ' שינויים'; }
-    pQty.append(box, cnt);
+    function count(){ const n = qrows.filter(q => !irows.find(x => x.idx === q.idx).removed && q.inp.value.trim() !== q.s.qty).length + irows.filter(x => x.removed).length + adds.length; cnt.hidden = !n; cnt.textContent = n + ' שינויים'; }
+    // הוספת רכיב: כמות + יחידה + שם, ובחירת מקום ברשימה
+    const addBox = el('div', 'addbox'); addBox.append(el('div', 'qsub', 'הוספת רכיב'));
+    const aq = el('input'); aq.type = 'text'; aq.inputMode = 'decimal'; aq.maxLength = 12; aq.placeholder = 'כמות'; aq.setAttribute('aria-label', 'כמות של הרכיב החדש');
+    const au = el('input'); au.type = 'text'; au.maxLength = 20; au.placeholder = 'יחידה'; au.setAttribute('aria-label', 'יחידה');
+    const an = el('input'); an.type = 'text'; an.maxLength = 60; an.placeholder = 'שם הרכיב'; an.setAttribute('aria-label', 'שם הרכיב החדש');
+    const ap = el('select'); ap.setAttribute('aria-label', 'איפה להוסיף ברשימה');
+    const o0 = el('option', '', 'בסוף הרשימה'); o0.value = '-1'; ap.append(o0);
+    r.ingredients.forEach((line, i) => { const o = el('option', '', 'אחרי: ' + line.slice(0, 40)); o.value = String(i); ap.append(o); });
+    const addBtn = el('button', 'add-btn', '+ הוסף לרשימה'); addBtn.type = 'button';
+    const addsList = el('div', 'adds');
+    const drawAdds = () => addsList.replaceChildren(...adds.map((a, k) => { const d = el('div', 'qrow add'); const x = el('button', 'rm-btn', 'בטל'); x.type = 'button'; x.setAttribute('aria-label', 'בטל הוספה: ' + a.text); x.onclick = () => { adds.splice(k, 1); drawAdds(); count(); }; d.append(el('span', 'rest', '+ ' + a.text + (a.after >= 0 ? '  (אחרי: ' + r.ingredients[a.after].slice(0, 24) + ')' : '')), x); return d; }));
+    addBtn.onclick = () => {
+      const nm = an.value.replace(/[\u0000-\u001f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, ' ').trim(), qv = aq.value.trim(), uv = au.value.replace(/[\u0000-\u001f]/g, ' ').trim();
+      aq.classList.remove('bad'); an.classList.remove('bad');
+      if(!nm){ an.classList.add('bad'); an.focus(); say('כתבו את שם הרכיב.', true); return; }
+      if(qv && !QTY_OK.test(qv)){ aq.classList.add('bad'); aq.focus(); say('הכמות צריכה להיות מספר (למשל 350 או 1.5), טווח (60-75) או חצי/רבע/שליש.', true); return; }
+      msg.hidden = true;
+      adds.push({ text: [qv, uv, nm].filter(Boolean).join(' '), after: Number(ap.value) });
+      aq.value = au.value = an.value = ''; drawAdds(); count(); an.focus();
+    };
+    const arow = el('div', 'arow'); arow.append(aq, au, an);
+    addBox.append(arow, ap, addBtn, addsList);
+    pQty.append(box, cnt, addBox);
     // הוראות הכנה
     txt = el('textarea'); txt.value = r.raw['הוראות הכנה'] || '';
     pTxt.replaceChildren(el('div', 'hint2', 'עריכה חופשית. כל שורה היא שלב.'), txt);
@@ -1060,7 +1098,7 @@ function openFix(preset){
   form.append(el('h2', '', 'בקשת תיקון'), pick, work, msg, actions);
   dlg.append(form);
 
-  const dirty = () => !sent && r && (qrows.some(q => q.inp.value.trim() !== q.s.qty) || (txt && txt.value.trim() !== (r.raw['הוראות הכנה'] || '').trim()) || (yin && (yin.value.trim() !== yBase || pin.value.trim() !== pBase)) || comment.value.trim());
+  const dirty = () => !sent && r && (qrows.some(q => q.inp.value.trim() !== q.s.qty) || irows.some(x => x.removed) || adds.length > 0 || (txt && txt.value.trim() !== (r.raw['הוראות הכנה'] || '').trim()) || (yin && (yin.value.trim() !== yBase || pin.value.trim() !== pBase)) || comment.value.trim());
   const tryClose = () => { if(!dirty() || confirm('לסגור בלי לשלוח? מה שכתבת יימחק.')) dlg.close(); };
   cancel.onclick = tryClose;
   dlg.addEventListener('cancel', ev => { ev.preventDefault(); tryClose(); });   // ESC
@@ -1071,13 +1109,19 @@ function openFix(preset){
     if(!r) return;
     const reqs = [];
     // כמויות
-    const changed = qrows.filter(q => q.inp.value.trim() !== q.s.qty);
+    const rmSet = new Set(irows.filter(x => x.removed).map(x => x.idx));
+    const changed = qrows.filter(q => !rmSet.has(q.idx) && q.inp.value.trim() !== q.s.qty);
     const badRows = changed.filter(q => !QTY_OK.test(q.inp.value.trim()));
     if(badRows.length){ badRows.forEach(q => q.row.classList.add('bad')); setMode('qty'); say('יש כמות שאינה מספר תקין. אפשר מספר (למשל 350 או 1.5), טווח (60-75) או חצי/רבע/שליש.', true); badRows[0].inp.focus(); return; }
-    if(changed.length){
-      const lines = r.ingredients.slice();
-      changed.forEach(q => { lines[q.idx] = q.s.pre + q.inp.value.trim() + q.s.rest; });
-      reqs.push({ field: 'מצרכים', base: r.raw['מצרכים'] || '', proposed: lines.join('\n') });
+    if(changed.length || rmSet.size || adds.length){
+      const lines = r.ingredients.map(l => ({ t: l, after: [] }));
+      changed.forEach(q => { lines[q.idx].t = q.s.pre + q.inp.value.trim() + q.s.rest; });
+      rmSet.forEach(i => { lines[i].t = null; });
+      const tail = [];
+      adds.forEach(a => { if(a.after >= 0 && lines[a.after]) lines[a.after].after.push(a.text); else tail.push(a.text); });
+      const outLines = []; lines.forEach(l => { if(l.t !== null) outLines.push(l.t); outLines.push(...l.after); }); outLines.push(...tail);
+      if(!outLines.some(l => !l.endsWith(':'))){ setMode('qty'); say('אי אפשר להשאיר מתכון בלי מצרכים.', true); return; }
+      reqs.push({ field: 'מצרכים', base: r.raw['מצרכים'] || '', proposed: outLines.join('\n') });
     }
     // הוראות הכנה
     const t = txt ? txt.value.trim() : '';
