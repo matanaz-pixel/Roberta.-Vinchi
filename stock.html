@@ -728,25 +728,27 @@ function viewPrep(st, date, id){
   const saved = (prepVals()[pk] || {}).v || {};
   const chosen = Object.create(null);
   for(const it of list.prep){ const v = saved[SK.sanitizeKey(it.name)]; chosen[it.name] = (typeof v === 'number' && isFinite(v) && v >= 0 && v <= 100000) ? v : it.need; }
+  // מוצר שמספיק: ברירת מחדל 0, אבל אפשר להכין בכל זאת (למשל לקראת יום עמוס או להקפאה)
+  for(const it of list.enough){ const v = saved[SK.sanitizeKey(it.name)]; chosen[it.name] = (typeof v === 'number' && isFinite(v) && v >= 0 && v <= 100000) ? v : 0; }
   const prodByName = Object.create(null); for(const p of prods) prodByName[p.name] = p;
   const waRows = () => [
     ...list.prep.map(it => ({ name: it.name, unit: it.unit, have: it.have, prep: chosen[it.name], need: it.need, cover: SK.coverage(prodByName[it.name], it.have + chosen[it.name], day) })),
     ...list.uncounted.map(it => ({ name: it.name, unit: it.unit })),
-    ...list.enough.map(it => ({ name: it.name, unit: it.unit, have: it.have, prep: 0, cover: SK.coverage(prodByName[it.name], it.have, day) }))
+    ...list.enough.map(it => ({ name: it.name, unit: it.unit, have: it.have, prep: chosen[it.name], cover: SK.coverage(prodByName[it.name], it.have, day) }))
   ];
   const wa = el('a', 'btn wa', 'שלח בוואטסאפ');
   const updateWa = () => { wa.href = 'https://wa.me/?text=' + encodeURIComponent(SK.formatWhatsApp({ station: stationName(st), dateKey: d, dayName: SK.DAYS[day], by: c.by, rows: waRows() })); };
-  const persist = () => { const all = prepVals(); const v = {}; for(const it of list.prep) v[SK.sanitizeKey(it.name)] = chosen[it.name]; all[pk] = { ts: Date.now(), v }; for(const k of Object.keys(all)) if(!all[k] || Date.now() - all[k].ts > 3 * 864e5) delete all[k]; store.set(PREP_KEY, all); };
+  const persist = () => { const all = prepVals(); const v = {}; for(const it of [...list.prep, ...list.enough]) v[SK.sanitizeKey(it.name)] = chosen[it.name]; all[pk] = { ts: Date.now(), v }; for(const k of Object.keys(all)) if(!all[k] || Date.now() - all[k].ts > 3 * 864e5) delete all[k]; store.set(PREP_KEY, all); };
 
   out.push(el('div', 'grp', `להכין (${list.prep.length})`));
-  const wrap = el('div', 'rows');
-  if(!list.prep.length) wrap.append(el('div', 'empty', !list.enough.length ? 'לא נספר אף מוצר, אז אין מה להכין.' : list.uncounted.length ? 'אין מה להכין לפי מה שנספר.' : 'אין מה להכין. הכול מספיק.'));
-  for(const it of list.prep){
+  const wrap = el('div', 'rows prep-list');
+  if(!list.prep.length) wrap.append(el('div', 'empty', !list.enough.length ? 'לא נספר אף מוצר, אז אין מה להכין.' : list.uncounted.length ? 'אין מה להכין לפי מה שנספר.' : 'אין מה להכין לפי הבסיס. אפשר להכין בכל זאת מהרשימה למטה.'));
+  const buildRow = (it, extra, target) => {
     const r = el('div', 'need'); const info = el('div', 'info');
-    info.append(el('div', 'nm', it.name), el('div', 'sub', `יש ${SK.fmtQty(it.have)} מתוך ${SK.fmtQty(it.base)}${it.unit ? ' ' + it.unit : ''} · חסר ${SK.fmtQty(it.need)}`));
+    info.append(el('div', 'nm', it.name), el('div', 'sub', `יש ${SK.fmtQty(it.have)} מתוך ${SK.fmtQty(it.base)}${it.unit ? ' ' + it.unit : ''} · ` + (extra ? 'מספיק' : 'חסר ' + SK.fmtQty(it.need))));
     if(it.note) info.append(el('div', 'sub', it.note));
     const cov = el('div', 'cov'); const strip = el('div', 'strip'); info.append(strip, cov);
-    const a = el('a', 'rlink', 'פתח מתכון'); const setLink = () => { a.href = './recipes.html#q=' + encodeURIComponent(it.recipe || it.name) + (chosen[it.name] > 0 ? '&need=' + chosen[it.name] : ''); }; info.append(a);
+    const a = el('a', 'rlink', 'פתח מתכון'); const setLink = () => { a.href = './recipes.html#q=' + encodeURIComponent(it.recipe || (prodByName[it.name] && prodByName[it.name].recipe) || it.name) + (chosen[it.name] > 0 ? '&need=' + chosen[it.name] : ''); }; info.append(a);
     const pq = el('div', 'pq'); const l2 = el('div', 'l2');
     const minus = el('button', 'step', '−'); minus.type = 'button'; minus.setAttribute('aria-label', 'הפחת ' + it.name);
     const plus = el('button', 'step', '+'); plus.type = 'button'; plus.setAttribute('aria-label', 'הוסף ' + it.name);
@@ -782,8 +784,9 @@ function viewPrep(st, date, id){
     plus.onclick = () => { const n = Math.min(100000, Math.round((chosen[it.name] + step) * 100) / 100); inp.value = SK.fmtQty(n); set(n); };
     showCov();
     l2.append(minus, inp, plus); pq.append(el('span', '', 'להכין' + (it.unit ? ' (' + it.unit + ')' : '')), l2);
-    r.classList.add('wrapcol'); r.append(info, pq); wrap.append(r);
-  }
+    r.classList.add('wrapcol'); r.append(info, pq); target.append(r);
+  };
+  for(const it of list.prep) buildRow(it, false, wrap);
   out.push(wrap);
   if(list.uncounted.length){
     out.push(el('div', 'grp', `לא נספר (${list.uncounted.length})`));
@@ -791,9 +794,10 @@ function viewPrep(st, date, id){
     out.push(u);
   }
   if(list.enough.length){
-    const det = el('details', 'grp-d'); det.append(el('summary', '', `מספיק (${list.enough.length})`));
-    for(const it of list.enough){ const m = el('div', 'mini'); m.append(el('span', '', it.name), el('span', 'dim', `יש ${SK.fmtQty(it.have)} מתוך ${SK.fmtQty(it.base)} ${it.unit || ''}`.trim())); det.append(m); }
-    out.push(det);
+    const det = el('details', 'grp-d'); det.append(el('summary', '', `מספיק (${list.enough.length}) · אפשר להכין בכל זאת`));
+    if(!list.prep.length || list.enough.some(it => chosen[it.name] > 0)) det.open = true;
+    const eb = el('div', 'rows'); for(const it of list.enough) buildRow(it, true, eb);
+    det.append(eb); out.push(det);
   }
   const acts = el('div', 'actions pbar');
   if(!specific){ const n = el('button', 'btn', 'ספירה חדשה'); n.type = 'button'; n.onclick = () => go('#/count/' + st); acts.append(n); }
@@ -804,7 +808,7 @@ function viewPrep(st, date, id){
     lastWa = Date.now();
     const items = {};
     for(const it of list.prep) items[SK.sanitizeKey(it.name)] = chosen[it.name];
-    for(const it of list.enough) items[SK.sanitizeKey(it.name)] = 0;
+    for(const it of list.enough) items[SK.sanitizeKey(it.name)] = chosen[it.name];
     if(!Object.keys(items).length) return;
     queuePrep({ date: d, station: st, id: c.id, rec: { t: Date.now() + clockOffset, by: String(c.by).slice(0, 40), day, items } });
     flush();
