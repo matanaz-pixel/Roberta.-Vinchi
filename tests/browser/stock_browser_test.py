@@ -438,6 +438,22 @@ async def main():
             bt = await pg.locator('#list').inner_text()
             check('Q2 need=5 with yield 2 opens the recipe scaled x2.5 and says so', 'x2.5' in bt.replace('×', 'x') and 'להכין 5' in bt and await pg.locator('.card.open').count() == 1, bt[:300])
             await ctx.close()
+            # ---------- מתכון אחד פתוח בכל רגע ----------
+            csv_2 = 'קטגוריה,שם,מצרכים,הוראות הכנה,הערות\nפס קר,סחוג,"עגבניות 1 ק""ג",טוחנים,\nפס קר,טחינה,"שומשום 1 ק""ג",טוחנים,'
+            ctx = await b.new_context(viewport={'width': 390, 'height': 844}, locale='he-IL', service_workers='block')
+            await ctx.add_init_script("localStorage.setItem('rb-device-v1','" + 'a' * 32 + "')")
+            async def gs5(route):
+                if route.request.method == 'POST': return await route.fulfill(status=200, body='ok')
+                await route.fulfill(status=200, body=json.dumps({'status': 'ok', 'name': 'x', 'code': 'AAAA', 'csv': csv_2, 'extra': ''}), headers={'access-control-allow-origin': '*'})
+            await ctx.route('**/script.google.com/**', gs5); await ctx.route('**/fonts.*/**', lambda r: r.abort())
+            pg = await new_page(ctx, errs)
+            await pg.goto(base + '/recipes.html'); await pg.wait_for_selector('.card')
+            heads = pg.locator('.card-head')
+            await heads.nth(0).click(); await heads.nth(1).click(); await pg.wait_for_timeout(200)
+            check('K1 opening a second recipe closes the first', await pg.locator('.card.open').count() == 1 and await heads.nth(0).get_attribute('aria-expanded') == 'false' and await heads.nth(1).get_attribute('aria-expanded') == 'true')
+            await heads.nth(1).click()
+            check('K2 a recipe can still be closed by tapping it again', await pg.locator('.card.open').count() == 0)
+            await ctx.close()
             # ---------- בקשת תיקון: הוספה והסרה של רכיב ----------
             csv_f = 'קטגוריה,שם,מצרכים,הוראות הכנה,הערות\nפס קר,סחוג,"1 ק""ג עגבניות\n400 גרם פלפל חריף\nשום","טוחנים",'
             ctx = await b.new_context(viewport={'width': 390, 'height': 844}, locale='he-IL', service_workers='block')

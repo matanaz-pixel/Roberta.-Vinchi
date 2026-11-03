@@ -591,7 +591,7 @@ function pushRecent(key){
 function openRecipe(key){
   const r = recipes.find(x => keyOf(x) === key); if(!r) return;
   activeTab = 'הכל'; state.tab = 'הכל'; document.getElementById('search').value = '';
-  openCards.add(key); buildTabs(); render(); renderRecent(); updateWake();
+  openCards.clear(); openCards.add(key); buildTabs(); render(); renderRecent(); updateWake();
   document.querySelector(`.card[data-key="${CSS.escape(key)}"]`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
 }
 
@@ -671,7 +671,11 @@ function buildCard(r){
   head.onclick = () => {
     const open = card.classList.toggle('open');
     head.setAttribute('aria-expanded', open);
-    if(open){ openCards.add(key); pushRecent(key); card.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } else openCards.delete(key);
+    if(open){
+      // מתכון אחד פתוח בכל רגע: פתיחת מתכון חדש סוגרת את האחרים
+      document.querySelectorAll('.card.open').forEach(c => { if(c !== card){ c.classList.remove('open'); c.querySelector('.card-head')?.setAttribute('aria-expanded', 'false'); } });
+      openCards.clear(); openCards.add(key); pushRecent(key); card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } else openCards.delete(key);
     updateWake();
   };
   const body = el('div', 'card-body');
