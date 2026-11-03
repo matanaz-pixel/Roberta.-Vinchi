@@ -506,3 +506,32 @@ test('consumption tolerates missing/garbage input', () => {
   assert.deepStrictEqual(SK.consumption(null, null, null, null), []);
   assert.deepStrictEqual(SK.consumption([{ name: 'x', base: [1,1,1,1,1,1,1] }], { x: 'a' }, null, { x: 1 }, 0), []);
 });
+
+// ---- מנות מול קופסה, תפוקת מתכון וגדלי מתכון ----
+const HX = 'מוצר,יחידה,ראשון,שני,שלישי,רביעי,חמישי,שישי,שבת,מתכון,הערה,גודל מנה,נפח קופסה,תפוקת מתכון,גדלי מתכון';
+test('parseDefs: optional columns portionG, boxVol, yield and sizes', () => {
+  const r = SK.parseDefs([HX, 'בולונז,מנות,25,25,25,25,40,40,40,בולונז,,150,,26,"4 ק""ג בשר=26;6 ק""ג בשר=39"', 'רוטב עגבניות,ליטר,16,16,16,16,24,24,24,,,,3.5,14,'].join('\n'));
+  assert.deepStrictEqual(r.warnings, []);
+  assert.strictEqual(r.products[0].portionG, 150); assert.strictEqual(r.products[0].yield, 26);
+  assert.deepStrictEqual(r.products[0].sizes, [{ label: '4 ק"ג בשר', qty: 26 }, { label: '6 ק"ג בשר', qty: 39 }]);
+  assert.strictEqual(r.products[1].boxVol, 3.5); assert.strictEqual(r.products[1].portionG, undefined);
+});
+test('parseDefs: bad optional values warn and are ignored', () => {
+  const r = SK.parseDefs([HX, 'א,ליטר,1,1,1,1,1,1,1,,,abc,-2,0,"בלי שווה;ב=x;טוב=5"'].join('\n'));
+  assert.strictEqual(r.products[0].portionG, undefined); assert.strictEqual(r.products[0].boxVol, undefined); assert.strictEqual(r.products[0].yield, undefined);
+  assert.deepStrictEqual(r.products[0].sizes, [{ label: 'טוב', qty: 5 }]);
+  assert.ok(r.warnings.length >= 5, r.warnings.join('|'));
+});
+test('describe / fmtFull / recipeMult', () => {
+  const portion = { name: 'בולונז', unit: 'מנות', portionG: 150, yield: 26 }, box = { name: 'רוטב', unit: 'ליטר', boxVol: 3.5 };
+  assert.strictEqual(SK.describe(portion, 24), '3.6 ק"ג'); assert.strictEqual(SK.describe(portion, 4), '600 גרם');
+  assert.strictEqual(SK.describe(box, 7), '2 קופסאות'); assert.strictEqual(SK.describe(box, 3.5), '1 קופסה'); assert.strictEqual(SK.describe(box, 9), '2.57 קופסאות');
+  assert.strictEqual(SK.describe({ name: 'x', unit: 'ליטר' }, 5), '');
+  assert.strictEqual(SK.fmtFull(portion, 24), '24 מנות (3.6 ק"ג)'); assert.strictEqual(SK.fmtFull(box, 7), '7 ליטר (2 קופסאות)'); assert.strictEqual(SK.fmtFull({ unit: 'ליטר' }, 5), '5 ליטר');
+  assert.strictEqual(SK.recipeMult(portion, 39), 1.5); assert.strictEqual(SK.recipeMult(box, 5), null);
+  assert.strictEqual(SK.unitsOfBoxes(box, 2.5), 8.75);
+});
+test('formatWhatsApp uses haveFmt and prepFmt when given', () => {
+  const t = SK.formatWhatsApp({ station: 'פס חם', dateKey: '2026-10-28', dayName: 'רביעי', by: 'דני', rows: [{ name: 'רוטב', unit: 'ליטר', have: 7, haveFmt: '7 ליטר (2 קופסאות)', prep: 9, prepFmt: '9 ליטר (2.57 קופסאות)' }] });
+  assert.ok(t.includes('רוטב: יש 7 ליטר (2 קופסאות), להכין 9 ליטר (2.57 קופסאות)'), t);
+});

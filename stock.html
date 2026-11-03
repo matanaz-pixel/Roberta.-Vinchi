@@ -209,16 +209,21 @@
   .need .pq input{ flex:1; min-width:0; width:auto; height:52px; border:0; background:transparent; font-size:38px; font-weight:300; color:var(--green); padding:0; }
   .need .pq .step{ width:48px; height:48px; border-radius:10px; border-width:1.5px; flex:none; }
   .need .pq .l2 .step:nth-of-type(2){ background:var(--green); color:#fff; border-color:var(--green); }
-  .strip{ order:4; display:flex; gap:4px; margin-top:6px; }
+  .need .conv{ order:4; font-size:14px; color:var(--text-dim); margin-top:2px; }
+  .need .chips{ order:5; display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .need .chips .chip{ min-height:44px; padding:0 12px; border:1px solid var(--line); background:#fff; border-radius:999px; font-size:14px; cursor:pointer; color:var(--text); }
+  .need .chips .chip[aria-pressed=true]{ background:var(--green); color:#fff; border-color:var(--green); }
+  .row .conv, .row .kind{ font-size:14px; color:var(--text-dim); margin-top:4px; }
+  .strip{ order:6; display:flex; gap:4px; margin-top:6px; }
   .strip .sc{ flex:1; text-align:center; }
   .strip .sb{ display:block; position:relative; height:26px; border-radius:6px; background:#f1ece0; overflow:hidden; border:1px solid transparent; }
   .strip .sb.off{ background:transparent; border:1px dashed #cfc8b8; }
   .strip .sb i{ position:absolute; inset-inline:0; bottom:0; background:var(--green); height:0; }
   .strip .sb i.part{ background:var(--accent); }
   .strip .sl{ display:block; margin-top:3px; font-size:12px; color:#8a948a; }
-  .need .cov{ order:5; font-size:14px; margin-top:6px; }
-  .need .rlink{ order:6; align-self:flex-start; }
-  .need .warn{ order:7; }
+  .need .cov{ order:7; font-size:14px; margin-top:6px; }
+  .need .rlink{ order:8; align-self:flex-start; }
+  .need .warn{ order:9; }
   .adm{ border-radius:12px; }
 </style>
 </head>
@@ -655,23 +660,35 @@ function viewCount(st){
   for(const p of prods){
     const key = SK.sanitizeKey(p.name);
     const row = el('div', 'row'); rowEls[key] = row;
+    const box = !!p.boxVol;                                  // מוצר בקופסה: סופרים קופסאות (גם חצאים) ושומרים ביחידת המוצר
     const l1 = el('div', 'l1'); l1.append(el('span', 'nm', p.name), el('span', 'base', `בסיס ${SK.fmtQty(SK.baseFor(p, day))} ${p.unit || ''}`.trim()));
+    const kind = box ? `סופרים קופסאות. קופסה אחת = ${SK.fmtQty(p.boxVol)} ${p.unit || ''}`.trim() : p.portionG ? `סופרים מנות. מנה = ${SK.fmtQty(p.portionG)} גרם` : '';
+    const conv = el('div', 'conv'); conv.hidden = true;
     const inp = el('input'); inp.type = 'text'; inp.inputMode = 'decimal'; inp.autocomplete = 'off'; inp.value = vals[key] ?? '';
-    { const pv = prevItems[key]; inp.placeholder = typeof pv === 'number' ? 'קודם ' + SK.fmtQty(pv) : '—'; }   // רמז בלבד, לא ערך: אי אפשר לשמור בטעות ספירה ישנה
-    inp.setAttribute('aria-label', `כמה יש: ${p.name}${p.unit ? ' (' + p.unit + ')' : ''}`);
+    { const pv = prevItems[key]; inp.placeholder = typeof pv === 'number' ? 'קודם ' + SK.fmtQty(box ? Math.round(pv / p.boxVol * 100) / 100 : pv) : '—'; }   // רמז בלבד, לא ערך: אי אפשר לשמור בטעות ספירה ישנה
+    inp.setAttribute('aria-label', box ? `כמה קופסאות יש: ${p.name}` : `כמה יש: ${p.name}${p.unit ? ' (' + p.unit + ')' : ''}`);
     inp.enterKeyHint = 'done'; inp.addEventListener('focus', () => setTimeout(() => { try{ inp.select(); }catch(e){} }, 0));
     const baseQ = SK.baseFor(p, day), warnEl = el('div', 'warn'); warnEl.hidden = true;
-    const updWarn = () => { const n = parseNum(inp.value); const big = !isNaN(n) && baseQ && n > baseQ * 3; warnEl.hidden = !big; row.classList.toggle('warnrow', !!big); if(big) warnEl.textContent = `הרבה יותר מהיעד (${SK.fmtQty(baseQ)}${p.unit ? ' ' + p.unit : ''}). בטוחים?`; };
+    const toUnits = n => box ? SK.unitsOfBoxes(p, n) : n;
+    const updConv = () => {
+      const n = parseNum(inp.value);
+      if(isNaN(n) || n < 0 || (!box && !p.portionG)){ conv.hidden = true; return; }
+      conv.textContent = box ? `= ${SK.fmtQty(toUnits(n))} ${p.unit || ''}`.trim() : '= ' + SK.describe(p, n);
+      conv.hidden = false;
+    };
+    const updWarn = () => { updConv(); const n0 = parseNum(inp.value); const n = isNaN(n0) ? n0 : toUnits(n0); const big = !isNaN(n) && baseQ && n > baseQ * 3; warnEl.hidden = !big; row.classList.toggle('warnrow', !!big); if(big) warnEl.textContent = `הרבה יותר מהיעד (${SK.fmtQty(baseQ)}${p.unit ? ' ' + p.unit : ''}). בטוחים?`; };
     const cur = () => { const n = parseNum(inp.value); return n; };
     const set = v => { inp.value = v; vals[key] = v; row.classList.remove('bad'); saveDraft(); updWarn(); refresh(); };
     inp.addEventListener('input', () => { vals[key] = inp.value; row.classList.remove('bad'); inp.removeAttribute('aria-invalid'); saveDraft(); updWarn(); refresh(); });
     const minus = el('button', 'step', '−'); minus.type = 'button'; minus.setAttribute('aria-label', 'הפחת ' + p.name);
     const plus = el('button', 'step', '+'); plus.type = 'button'; plus.setAttribute('aria-label', 'הוסף ' + p.name);
-    minus.onclick = () => { const n = cur(); set(isNaN(n) ? '0' : SK.fmtQty(Math.max(0, Math.round((n - 1) * 100) / 100))); };
-    plus.onclick = () => { const n = cur(); set(isNaN(n) ? '1' : SK.fmtQty(Math.round((n + 1) * 100) / 100)); };
+    const stp = box ? 0.5 : 1;
+    minus.onclick = () => { const n = cur(); set(isNaN(n) ? '0' : SK.fmtQty(Math.max(0, Math.round((n - stp) * 100) / 100))); };
+    plus.onclick = () => { const n = cur(); set(isNaN(n) ? SK.fmtQty(stp) : SK.fmtQty(Math.round((n + stp) * 100) / 100)); };
     const clr = el('button', 'clr', 'ניקוי'); clr.type = 'button'; clr.setAttribute('aria-label', 'סמן כלא נספר: ' + p.name); clr.onclick = () => set('');
     const l2 = el('div', 'l2'); l2.append(minus, inp, plus, clr);
-    row.append(l1, l2, warnEl); updWarn(); rows.append(row);
+    const kindEl = kind ? el('div', 'kind', kind) : null;
+    row.append(...[l1, kindEl, l2, conv, warnEl].filter(Boolean)); updWarn(); rows.append(row);
   }
   out.push(progress, errBox, rows);
   const bar = el('div', 'bar'); bar.append(save); out.push(bar);
@@ -680,7 +697,12 @@ function viewCount(st){
     const who = nameIn.value.trim().slice(0, 40);
     errBox.hidden = true;
     if(!who){ errBox.textContent = 'כתבו את השם שלכם לפני השמירה.'; errBox.hidden = false; nameIn.focus(); return; }
-    const raw = {}; for(const p of prods){ const k = SK.sanitizeKey(p.name); if(vals[k] !== undefined) raw[k] = vals[k]; }
+    const raw = {};
+    for(const p of prods){
+      const k = SK.sanitizeKey(p.name); if(vals[k] === undefined) continue;
+      const n = parseNum(vals[k]);
+      raw[k] = p.boxVol && !isNaN(n) && n >= 0 ? String(SK.unitsOfBoxes(p, n)) : vals[k];     // מוצר בקופסה: מקופסאות ליחידת המוצר
+    }
     const v = SK.validateCount(prods, raw, day);
     if(!v.ok){
       errBox.textContent = v.errors.join(' · '); errBox.hidden = false;
@@ -731,10 +753,11 @@ function viewPrep(st, date, id){
   // מוצר שמספיק: ברירת מחדל 0, אבל אפשר להכין בכל זאת (למשל לקראת יום עמוס או להקפאה)
   for(const it of list.enough){ const v = saved[SK.sanitizeKey(it.name)]; chosen[it.name] = (typeof v === 'number' && isFinite(v) && v >= 0 && v <= 100000) ? v : 0; }
   const prodByName = Object.create(null); for(const p of prods) prodByName[p.name] = p;
+  const fmtOf = (name, q) => { const p = prodByName[name], d = SK.describe(p, q); return d ? SK.fmtFull(p, q) : ''; };   // ריק כשאין תיאור משני: ההודעה נשארת כמו קודם
   const waRows = () => [
-    ...list.prep.map(it => ({ name: it.name, unit: it.unit, have: it.have, prep: chosen[it.name], need: it.need, cover: SK.coverage(prodByName[it.name], it.have + chosen[it.name], day) })),
+    ...list.prep.map(it => ({ name: it.name, unit: it.unit, have: it.have, haveFmt: fmtOf(it.name, it.have), prep: chosen[it.name], prepFmt: fmtOf(it.name, chosen[it.name]), need: it.need, cover: SK.coverage(prodByName[it.name], it.have + chosen[it.name], day) })),
     ...list.uncounted.map(it => ({ name: it.name, unit: it.unit })),
-    ...list.enough.map(it => ({ name: it.name, unit: it.unit, have: it.have, prep: chosen[it.name], cover: SK.coverage(prodByName[it.name], it.have, day) }))
+    ...list.enough.map(it => ({ name: it.name, unit: it.unit, have: it.have, haveFmt: fmtOf(it.name, it.have), prep: chosen[it.name], prepFmt: fmtOf(it.name, chosen[it.name]), cover: SK.coverage(prodByName[it.name], it.have, day) }))
   ];
   const wa = el('a', 'btn wa', 'שלח בוואטסאפ');
   const updateWa = () => { wa.href = 'https://wa.me/?text=' + encodeURIComponent(SK.formatWhatsApp({ station: stationName(st), dateKey: d, dayName: SK.DAYS[day], by: c.by, rows: waRows() })); };
@@ -745,7 +768,10 @@ function viewPrep(st, date, id){
   if(!list.prep.length) wrap.append(el('div', 'empty', !list.enough.length ? 'לא נספר אף מוצר, אז אין מה להכין.' : list.uncounted.length ? 'אין מה להכין לפי מה שנספר.' : 'אין מה להכין לפי הבסיס. אפשר להכין בכל זאת מהרשימה למטה.'));
   const buildRow = (it, extra, target) => {
     const r = el('div', 'need'); const info = el('div', 'info');
-    info.append(el('div', 'nm', it.name), el('div', 'sub', `יש ${SK.fmtQty(it.have)} מתוך ${SK.fmtQty(it.base)}${it.unit ? ' ' + it.unit : ''} · ` + (extra ? 'מספיק' : 'חסר ' + SK.fmtQty(it.need))));
+    const pd = prodByName[it.name];
+    const haveTxt = SK.fmtQty(it.have) + (pd && pd.boxVol ? ` (${SK.describe(pd, it.have)})` : '');
+    info.append(el('div', 'nm', it.name), el('div', 'sub', `יש ${haveTxt} מתוך ${SK.fmtQty(it.base)}${it.unit ? ' ' + it.unit : ''} · ` + (extra ? 'מספיק' : 'חסר ' + SK.fmtQty(it.need))));
+    const convEl = el('div', 'conv'); convEl.hidden = true; info.append(convEl);
     if(it.note) info.append(el('div', 'sub', it.note));
     const cov = el('div', 'cov'); const strip = el('div', 'strip'); info.append(strip, cov);
     const a = el('a', 'rlink', 'פתח מתכון'); const setLink = () => { a.href = './recipes.html#q=' + encodeURIComponent(it.recipe || (prodByName[it.name] && prodByName[it.name].recipe) || it.name) + (chosen[it.name] > 0 ? '&need=' + chosen[it.name] : ''); }; info.append(a);
@@ -757,6 +783,7 @@ function viewPrep(st, date, id){
     const step = it.base >= 20 ? 5 : it.base >= 5 ? 1 : 0.5;
     inp.enterKeyHint = 'done'; inp.addEventListener('focus', () => setTimeout(() => { try{ inp.select(); }catch(e){} }, 0));
     const warnEl = el('div', 'warn'); warnEl.hidden = true; info.append(warnEl);
+    let chipEls = null;
     const showCov = () => {
       setLink();
       const tot = it.have + chosen[it.name], cd = SK.coverageDays(prodByName[it.name], tot, day);
@@ -774,6 +801,10 @@ function viewPrep(st, date, id){
         return cells;
       })());
       cov.className = 'cov' + (cd && !cd.week ? (cd.days.length <= 1 ? ' lvl-bad' : cd.days.length === 2 ? ' lvl-warn' : '') : '');
+      { const d = SK.describe(pd, chosen[it.name]), m = SK.recipeMult(pd, chosen[it.name]);
+        const bits = []; if(d && chosen[it.name] > 0) bits.push('= ' + d); if(m !== null && chosen[it.name] > 0) bits.push('≈ ' + SK.fmtQty(m) + ' מתכון');
+        convEl.textContent = bits.join(' · '); convEl.hidden = !bits.length; }
+      if(chipEls) chipEls.forEach(([b, q]) => b.setAttribute('aria-pressed', String(Math.abs(q - chosen[it.name]) < 0.005)));
       const big = chosen[it.name] > it.base * 2; warnEl.hidden = !big;
       if(big) warnEl.textContent = `הרבה יותר מהיעד (${SK.fmtQty(it.base)}${it.unit ? ' ' + it.unit : ''}). בטוחים?`;
     };
@@ -784,7 +815,17 @@ function viewPrep(st, date, id){
     plus.onclick = () => { const n = Math.min(100000, Math.round((chosen[it.name] + step) * 100) / 100); inp.value = SK.fmtQty(n); set(n); };
     showCov();
     l2.append(minus, inp, plus); pq.append(el('span', '', 'להכין' + (it.unit ? ' (' + it.unit + ')' : '')), l2);
-    r.classList.add('wrapcol'); r.append(info, pq); target.append(r);
+    r.classList.add('wrapcol'); r.append(info, pq);
+    if(pd && pd.sizes && pd.sizes.length){
+      const chips = el('div', 'chips'); chips.setAttribute('role', 'group'); chips.setAttribute('aria-label', 'גדלי מתכון: ' + it.name);
+      chipEls = pd.sizes.map(z => {
+        const b = el('button', 'chip', `${z.label} · ${SK.fmtQty(z.qty)}${it.unit ? ' ' + it.unit : ''}`); b.type = 'button';
+        b.onclick = () => { inp.value = SK.fmtQty(z.qty); set(z.qty); };
+        chips.append(b); return [b, z.qty];
+      });
+      r.append(chips); showCov();
+    }
+    target.append(r);
   };
   for(const it of list.prep) buildRow(it, false, wrap);
   out.push(wrap);

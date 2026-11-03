@@ -12,6 +12,9 @@ const rb = () => {
 const STATIONS = [{ key: 'cold', name: 'פס קר' }, { key: 'hot', name: 'פס חם' }, { key: 'tabun', name: 'טאבון' }];
 const DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];     // אינדקס 0 = ראשון, כמו Date#getDay()
 const HEADERS = ['מוצר', 'יחידה', ...DAYS, 'מתכון', 'הערה'];
+// עמודות אופציונליות: גודל מנה (גרם) למוצר שמחולק למנות; נפח קופסה (ביחידת המוצר) למוצר שיושב בקופסה;
+// תפוקת מתכון (ביחידת המוצר) למתכון בסיסי אחד; גדלי מתכון: "תווית=כמות;תווית=כמות" (כמות ביחידת המוצר)
+const OPT_HEADERS = ['גודל מנה', 'נפח קופסה', 'תפוקת מתכון', 'גדלי מתכון'];
 const TZ = 'Asia/Jerusalem';
 const MAX_QTY = 100000;
 const MAX_KEY = 60;
@@ -113,7 +116,30 @@ function parseDefs(csvText){
       if(r.bad) warnings.push(`${name}, ${d}: ערך לא תקין "${String(raw).trim().slice(0, 20)}", מדולג`);
       return r.v;
     });
-    products.push({ name, unit: cell(row, 'יחידה').trim(), base, recipe: cell(row, 'מתכון').trim(), note: cell(row, 'הערה').trim() });
+    const prod = { name, unit: cell(row, 'יחידה').trim(), base, recipe: cell(row, 'מתכון').trim(), note: cell(row, 'הערה').trim() };
+    const opt = h => {
+      const raw = cell(row, h); if(!String(raw).trim()) return null;
+      const r = parseQty(raw);
+      if(r.bad || r.v === null){ warnings.push(`${name}, ${h}: ערך לא תקין "${String(raw).trim().slice(0, 20)}", מדולג`); return null; }
+      return r.v;
+    };
+    const pg = opt('גודל מנה'), bv = opt('נפח קופסה'), yl = opt('תפוקת מתכון');
+    if(pg !== null) prod.portionG = pg;
+    if(bv !== null) prod.boxVol = bv;
+    if(yl !== null) prod.yield = yl;
+    const sraw = String(cell(row, 'גדלי מתכון')).trim();
+    if(sraw){
+      const sizes = [];
+      for(const part of sraw.split(/[;\n]/)){
+        const t = part.trim(); if(!t) continue;
+        const i = t.lastIndexOf('=');
+        const label = i > 0 ? oneLine(t.slice(0, i)).slice(0, 30) : '', q = i > 0 ? parseQty(t.slice(i + 1)) : { bad: true };
+        if(!label || q.bad || q.v === null){ warnings.push(`${name}, גדלי מתכון: "${t.slice(0, 30)}" לא תקין (צורה: תווית=כמות), מדולג`); continue; }
+        if(sizes.length < 8) sizes.push({ label, qty: q.v });
+      }
+      if(sizes.length) prod.sizes = sizes;
+    }
+    products.push(prod);
   }
   return products.length ? { products, warnings } : null;
 }
@@ -213,6 +239,24 @@ function consumption(products, prevItems, prepItems, curItems, prevDay){
   }
   return out;
 }
+/** תיאור משני לכמות: למוצר בקופסה כמה קופסאות, למוצר שמחולק למנות כמה משקל. מחרוזת ריקה כשאין מידע. */
+function describe(p, qty){
+  if(!p || typeof qty !== 'number' || !isFinite(qty)) return '';
+  if(p.boxVol){ const b = round2(qty / p.boxVol); return `${fmtQty(b)} ${b === 1 ? 'קופסה' : 'קופסאות'}`; }
+  if(p.portionG){ const g = qty * p.portionG; return g >= 1000 ? `${fmtQty(round2(g / 1000))} ק"ג` : `${fmtQty(Math.round(g))} גרם`; }
+  return '';
+}
+/** כמות עם יחידה ותיאור משני: "24 מנות (3.6 ק"ג)" או "7 ליטר (2 קופסאות)". */
+function fmtFull(p, qty){
+  if(typeof qty !== 'number' || !isFinite(qty)) return '';
+  const u = p && p.unit ? ' ' + p.unit : '', d = describe(p, qty);
+  return fmtQty(qty) + u + (d ? ` (${d})` : '');
+}
+/** כמה מתכונים בסיסיים זה (לפי תפוקת מתכון), או null כשאין תפוקה. */
+function recipeMult(p, qty){
+  return p && p.yield > 0 && typeof qty === 'number' && isFinite(qty) ? round2(qty / p.yield) : null;
+}
+const unitsOfBoxes = (p, boxes) => round2(boxes * p.boxVol);
 function fmtQty(n){
   if(typeof n !== 'number' || !isFinite(n)) return '';
   return String(round2(n));
@@ -258,8 +302,8 @@ function formatWhatsApp({ station, dateKey: dk, dayName, by, rows, prep, uncount
       const u = oneLine(r.unit) ? ' ' + oneLine(r.unit) : '';
       const parts = [];
       const counted = typeof r.have === 'number' && isFinite(r.have);
-      parts.push(counted ? `יש ${fmtQty(r.have)}${u}` : 'לא נספר');
-      if(typeof r.prep === 'number' && isFinite(r.prep) && r.prep > 0) parts.push(`להכין ${fmtQty(r.prep)}${u}`);
+      parts.push(counted ? (oneLine(r.haveFmt) ? 'יש ' + oneLine(r.haveFmt) : `יש ${fmtQty(r.have)}${u}`) : 'לא נספר');
+      if(typeof r.prep === 'number' && isFinite(r.prep) && r.prep > 0) parts.push('להכין ' + (oneLine(r.prepFmt) || `${fmtQty(r.prep)}${u}`));
       else if(counted && typeof r.need === 'number' && r.need > 0) parts.push(`לא מכינים (חסר ${fmtQty(r.need)}${u})`);
       else if(counted) parts.push('אין צורך להכין');
       if(oneLine(r.cover) && counted) parts.push(oneLine(r.cover));
@@ -277,6 +321,6 @@ function formatWhatsApp({ station, dateKey: dk, dayName, by, rows, prep, uncount
   return out.join('\n');
 }
 
-const api = { STATIONS, DAYS, HEADERS, parseDefs, defsProblem, baseFor, dayIdx, dateKey, addDays, sanitizeKey, productsForDay, validateCount, latestCount, prepList, fmtQty, coverageDays, coverage, formatWhatsApp, consumption };
+const api = { STATIONS, DAYS, HEADERS, OPT_HEADERS, describe, fmtFull, recipeMult, unitsOfBoxes, parseDefs, defsProblem, baseFor, dayIdx, dateKey, addDays, sanitizeKey, productsForDay, validateCount, latestCount, prepList, fmtQty, coverageDays, coverage, formatWhatsApp, consumption };
 if(typeof module === 'object' && module.exports) module.exports = api; else root.SK = api;
 })(typeof self !== 'undefined' ? self : this);

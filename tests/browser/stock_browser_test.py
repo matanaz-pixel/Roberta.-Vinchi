@@ -90,10 +90,10 @@ def init_script(target, skew_extra=0, seed=None, offset=0):
 """
 
 class Srv:
-    def __init__(self, status='ok'): self.admin = False; self.status = status; self.posts = []; self.gets = 0; self.old = False; self.net = True
+    def __init__(self, status='ok'): self.csv = None; self.admin = False; self.status = status; self.posts = []; self.gets = 0; self.old = False; self.net = True
     def body(self):
         if self.old: return 'ok'
-        if self.status == 'ok': return json.dumps({'status': 'ok', 'name': 'דני', 'code': 'ABCD', 'stations': CSV, 'admin': self.admin})
+        if self.status == 'ok': return json.dumps({'status': 'ok', 'name': 'דני', 'code': 'ABCD', 'stations': self.csv or CSV, 'admin': self.admin})
         if self.status == 'unknown': return json.dumps({'status': 'unknown'})
         return json.dumps({'status': self.status, 'name': 'דני', 'code': 'ABCD'})
 
@@ -454,6 +454,39 @@ async def main():
             await heads.nth(1).click()
             check('K2 a recipe can still be closed by tapping it again', await pg.locator('.card.open').count() == 0)
             await ctx.close()
+            # ---------- מוצר מחולק למנות מול מוצר בקופסה ----------
+            H2 = HEAD + ',גודל מנה,נפח קופסה,תפוקת מתכון,גדלי מתכון'
+            srv = Srv('ok'); srv.csv = dict(CSV); srv.csv['hot'] = '\n'.join([H2,
+              'בולונז,מנות,,,,25,25,,,בולונז,,150,,26,"4 ק""ג בשר=26;6 ק""ג בשר=39"',
+              'רוטב עגבניות,ליטר,,,,16,16,,,רוטב עגבניות,,,3.5,14,'])
+            ctx = await mk_ctx(b, base, srv); pg = await new_page(ctx, errs)
+            await pg.goto(base + '/stock.html'); await pg.wait_for_selector('.st')
+            await pg.locator('.st', has_text='פס חם').click(); await pg.wait_for_selector('.row')
+            rt = await pg.locator('#view').inner_text()
+            check('P1 count shows portion size and box volume hints', 'מנה = 150 גרם' in rt and 'קופסה אחת = 3.5 ליטר' in rt, rt[:300])
+            await pg.locator('.row', has_text='בולונז').locator('input').fill('10')
+            await pg.locator('.row', has_text='רוטב עגבניות').locator('input').fill('2')
+            rt = await pg.locator('#view').inner_text()
+            check('P2 live conversion: 10 portions = 1.5 ק"ג, 2 boxes = 7 ליטר', '= 1.5 ק"ג' in rt and '= 7 ליטר' in rt, rt[:400])
+            await pg.locator('.row', has_text='רוטב עגבניות').locator('button.step').nth(1).click()   # + חצי קופסה
+            check('P3 box product steps by half a box', await pg.locator('.row', has_text='רוטב עגבניות').locator('input').input_value() == '2.5')
+            await pg.locator('.row', has_text='רוטב עגבניות').locator('input').fill('2')
+            await pg.fill('#sender-in', 'דני'); await pg.locator('.bar .btn').click(); await pg.wait_for_selector('.need')
+            w = await pg.evaluate('window.__fb.writes')
+            items = w[0]['val']['items'] if w else {}
+            check('P4 stored in product unit: 2 boxes saved as 7 ליטר, portions as is', items.get('רוטב עגבניות') == 7 and items.get('בולונז') == 10, w)
+            pt = await pg.locator('#view').inner_text()
+            check('P5 prep shows boxes for the box product and weight/recipe for portions', '(2 קופסאות)' in pt and '= 2.57 קופסאות' in pt and '= 2.25 ק"ג' in pt, pt[:500])
+            chips = await pg.locator('.chip').all_inner_texts()
+            check('P6 recipe-size chips come from the sheet', chips == ['4 ק"ג בשר · 26 מנות', '6 ק"ג בשר · 39 מנות'], chips)
+            await pg.locator('.chip').nth(1).click()
+            pt = await pg.locator('#view').inner_text()
+            check('P7 chip sets the amount and shows weight and recipe multiple', await pg.locator('.need', has_text='בולונז').locator('input').input_value() == '39' and '= 5.85 ק"ג' in pt and '≈ 1.5 מתכון' in pt and await pg.locator('.chip').nth(1).get_attribute('aria-pressed') == 'true', pt[:500])
+            from urllib.parse import unquote as _uq
+            wt = _uq(await pg.locator('a.wa').get_attribute('href'))
+            check('P8 whatsapp carries the box and weight details', 'יש 7 ליטר (2 קופסאות)' in wt and 'להכין 39 מנות (5.85 ק"ג)' in wt, wt)
+            await ctx.close()
+
             # ---------- בקשת תיקון: הוספה והסרה של רכיב ----------
             csv_f = 'קטגוריה,שם,מצרכים,הוראות הכנה,הערות\nפס קר,סחוג,"1 ק""ג עגבניות\n400 גרם פלפל חריף\nשום","טוחנים",'
             ctx = await b.new_context(viewport={'width': 390, 'height': 844}, locale='he-IL', service_workers='block')
