@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>מדריך עריכה | ספר מנות</title>
+<meta name="theme-color" content="#023305">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../roberta-logo.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600&display=swap" media="print" onload="this.media='all'">
+<style>
+  :root{--green:#023305;--green-soft:#e6efe6;--cream:#fbf8f2;--card:#fff;--line:#e9e3d6;--text:#1d2a1e;--dim:#5b665b;--accent:#ef4823;--gold-soft:#f4ecd6;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--cream);color:var(--text);font-family:'Rubik',system-ui,sans-serif;line-height:1.6;}
+  header{background:var(--green);color:#fff;padding:14px 16px;padding-top:max(14px, env(safe-area-inset-top));display:flex;align-items:center;gap:12px;}
+  header img{height:28px;}
+  header span{letter-spacing:.14em;font-size:13px;color:#cfe0cf;}
+  main{max-width:680px;margin:0 auto;padding:20px 16px calc(48px + env(safe-area-inset-bottom));}
+  h1{font-size:28px;color:var(--green);margin:8px 0 6px;}
+  .lead{color:var(--dim);margin:0 0 20px;}
+  .path{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;}
+  .path span{background:var(--green);color:#fff;border-radius:999px;padding:6px 16px;font-weight:500;}
+  .path span:nth-child(2){background:var(--accent);}
+  .path span:nth-child(3){background:var(--dim);}
+  h2{font-size:20px;color:var(--green);margin:28px 0 10px;}
+  ol{list-style:none;counter-reset:s;padding:0;margin:0;}
+  ol li{counter-increment:s;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px 12px 16px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start;}
+  ol li::before{content:counter(s);flex:none;background:var(--accent);color:#fff;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:600;margin-top:1px;}
+  ul{margin:0;padding-inline-start:20px;}
+  .note{background:var(--gold-soft);border-radius:14px;padding:12px 16px;color:#5f5024;margin:0 0 8px;}
+  a{color:var(--green);font-weight:500;overflow-wrap:anywhere;}
+  code{background:var(--green-soft);border-radius:6px;padding:1px 6px;direction:ltr;unicode-bidi:embed;}
+  .go{display:inline-block;margin-top:8px;background:var(--green);color:#fff;text-decoration:none;border-radius:999px;padding:10px 20px;}
+</style>
+</head>
+<body>
+<header><img src="../roberta-logo-white.svg" alt="רוברטה וינצ'י"><span>ספר מנות</span></header>
+<main>
+  <h1>איך מעדכנים את התפריט</h1>
+  <p class="lead">שלושה מקומות, בסדר הזה.</p>
+  <div class="path"><span>1. עורכים</span><span>2. מורידים</span><span>3. מעלים</span></div>
+  <p class="note">עד שמעלים את הקובץ, המלצרים ממשיכים לראות את התפריט הקודם. אפשר לנסות בלי לפחד.</p>
+
+  <h2>1. עורכים: בדף העריכה</h2>
+  <ol>
+    <li><span>לוחצים על מנה ברשימה. נפתח חלון עריכה.</span></li>
+    <li><span>משנים שם, מחיר, תיאור, אלרגנים, שינויים אפשריים או הערות, ולוחצים "שמור".</span></li>
+    <li><span><b>להחלפת תמונה:</b> "החלף תמונה", בוחרים תמונה מהטלפון או מהמחשב. היא מוקטנת לבד.</span></li>
+    <li><span><b>לשינוי סדר:</b> החצים ▲ ▼ ליד כל מנה.</span></li>
+    <li><span><b>להסתרת מנה:</b> העין 👁. היא נשארת בקובץ ואפשר להחזיר אותה.</span></li>
+    <li><span><b>מנה חדשה:</b> "+ מנה" בראש הקטגוריה. קטגוריות: בלשונית "קטגוריות".</span></li>
+    <li><span>"תצוגה מקדימה" בראש הדף מראה איך זה ייראה למלצרים.</span></li>
+  </ol>
+  <a class="go" href="admin.html">לדף העריכה</a>
+
+  <h2>2. מורידים: קובץ אחד</h2>
+  <ol><li><span>לוחצים "הורד קובץ" בראש דף העריכה. יורד קובץ בשם <code>menu-data.json</code> לתיקיית ההורדות.</span></li></ol>
+
+  <h2>3. מעלים: ל-GitHub</h2>
+  <ol>
+    <li><span>נכנסים ל<a href="https://github.com/matanaz-pixel/Roberta.-Vinchi/upload/main/menu" target="_blank" rel="noopener">עמוד ההעלאה</a>.</span></li>
+    <li><span>גוררים לשם את הקובץ <code>menu-data.json</code> שירד. אם שואלים על החלפת קובץ קיים, זה בסדר.</span></li>
+    <li><span>למטה לוחצים <b>Commit changes</b> (הכפתור הירוק).</span></li>
+    <li><span>מחכים כדקה ומרעננים את האתר. השינוי אצל כל המלצרים.</span></li>
+  </ol>
+
+  <h2>אם משהו השתבש</h2>
+  <ul>
+    <li>לא רואים שינוי באתר: מחכים דקה ומרעננים. בטלפון, סוגרים את הדף ופותחים שוב.</li>
+    <li>רוצים לבטל שינויים שעוד לא הועלו: בדף העריכה, "זרוק טיוטה".</li>
+    <li>אפשר תמיד לבקש מ-Claude לעשות את העדכון במקומך.</li>
+  </ul>
+</main>
+</body>
+</html>
