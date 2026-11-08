@@ -32,7 +32,6 @@
 2. Authentication > Settings > User actions: לכבות "Enable create (sign-up)". בלי זה כל אחד שמכיר את מפתח ה-API יכול ליצור משתמש.
 3. Realtime Database > Rules: להוסיף את הצומת `menu` מתוך `docs/menu-rules.json` לתוך `rules`, ולהחליף `REPLACE_WITH_ADMIN_EMAIL` במייל של המנהל. לבדוק ב-Rules Playground: קריאה בלי כניסה מותרת, כתיבה בלי כניסה נחסמת.
 4. לפתוח את `menu/admin.html`, להיכנס, ללחוץ "פרסם". מרגע זה המלצרים רואים את הנתונים מ-Firebase.
-5. אימות המייל: `email_verified` חייב להיות true (Firebase שולח מייל אימות; אפשר לאמת גם מהקונסולה).
 
 ## בדיקת נתונים
 `node tests/lint-csv.js recipes.csv [recipes-extra.csv]` על ייצוא CSV של הטאבים.

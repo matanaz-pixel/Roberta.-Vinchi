@@ -188,7 +188,7 @@
       if (remote && remote !== S.loadedAt && !confirm('התפריט עודכן ממכשיר אחר מאז שפתחת את הדף. לדרוס את העדכון?')) { btn.disabled = false; throw new Error('בוטל'); }
       const payload = L.toFirebase(S.cats, S.items);
       return db.ref('menu').set(payload).then(() => { S.loadedAt = payload.updated; S.dirty = false; S.empty = false; $('#dirtyDot').hidden = true; render(); toast('התפריט פורסם. המלצרים יראו אותו מיד.'); });
-    }).catch(err => { if (err.message !== 'בוטל') { toast('הפרסום נכשל: ' + err.message, true); btn.disabled = false; } });
+    }).catch(err => { if (err.message !== 'בוטל') { toast(/PERMISSION_DENIED/i.test(err.message) ? 'אין הרשאת כתיבה. בדוק שכללי Firebase הוגדרו והמייל שלך מופיע בהם.' : 'הפרסום נכשל: ' + err.message, true); btn.disabled = false; } });
   }
 
   // ---------- אירועים ----------
