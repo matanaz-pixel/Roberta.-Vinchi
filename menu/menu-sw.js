@@ -1,7 +1,7 @@
 // Service worker של ספר המנות בלבד (נפרד מהאפליקציות האחרות). דפים: קודם הרשת (עד 4 שניות), אחרת המכשיר.
 // תמונות וגופנים: מהמכשיר ובמקביל מתעדכנים, כך שמלצר בלי קליטה בחדר האוכל עדיין רואה את הכול.
 const VERSION = 'menu-v2';
-const SHELL = ['./index.html', './menu-lib.js', './menu-view.js', './menu-data.json', './menu.webmanifest', '../roberta-logo-white.svg'];
+const SHELL = ['./index.html', './menu-lib.js', './menu-view.js', './menu-data.json', './guide.html', './menu.webmanifest', '../roberta-logo-white.svg'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
