@@ -171,7 +171,7 @@
     a.download = 'menu-data.json';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    toast('הקובץ ירד. כדי שהמלצרים יראו את השינויים, החלף בו את menu/menu-data.json באתר.');
+    toast('הקובץ ירד. אם השם שלו כולל מספר בסוגריים, שנה אותו ל-menu-data.json לפני ההעלאה.');
   }
   function resetDraft() {
     if (!confirm('לזרוק את כל השינויים ולחזור לתפריט שבאתר?')) return;

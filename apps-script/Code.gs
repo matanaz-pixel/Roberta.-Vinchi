@@ -39,6 +39,10 @@ const DEV_APPROVED = 4, DEV_SEEN = 5, DEV_HASH = 6, DEV_ROLE = 7;
 const ADMIN_ROLE = 'מנהל';         // כתבו "מנהל" בעמודת "תפקיד" כדי שהמכשיר יראה את טאב המנהל באפליקציית המלאי
 const DEV_REQ_GLOBAL = 20;        // בקשות גישה חדשות לכל 10 דקות, לכולם יחד
 const DEV_PENDING_MAX = 100;      // תקרה לבקשות שלא אושרו. מעבר לזה נדחות עד שמנקים את הטאב
+const WAITERS_SHEET = 'מלצרים';          // מבחן התפריט: עמודות "שם" ו"קוד". מוסיפים כאן שורה לכל מלצר (הטאב נוצר אוטומטית)
+const QUIZ_RESULTS_SHEET = 'תוצאות מבחן';
+const QUIZ_EMAIL = '';                    // לאן נשלחות תוצאות המבחן. ריק = המייל שלך (הבעלים של הסקריפט)
+const QUIZ_MAX_PER_DAY = 3;               // כמה פעמים ביום אפשר לשלוח תוצאה עם אותו קוד
 const STOCK_TABS = { cold: 'מלאי-פס קר', hot: 'מלאי-פס חם', tabun: 'מלאי-טאבון' };   // טאב לכל פס (אפליקציית המלאי)
 const STOCK_MAX_CSV = 300000;     // תקרת גודל לטאב מלאי. מעבר לזה הטאב לא נשלח (חותכים ושולחים CSV שבור זה גרוע יותר)
 const SEEN_EVERY_S = 3600;        // "נראה לאחרונה" מתעדכן לכל היותר פעם בשעה למכשיר
@@ -48,6 +52,7 @@ function doGet(e) {
     const p = (e && e.parameter) || {};
     if (p.a === 'data') return handleData(p.d);
     if (p.a === 'stock') return handleStock(p.d);
+    if (p.a === 'quizcode') return reply(waiterByCode(p.c) ? 'ok' : 'bad');
   } catch (err) {
     return reply('error');
   }
@@ -61,6 +66,7 @@ function doPost(e) {
     const d = JSON.parse(e.postData.contents);
     if (d.website) return reply('ok');                       // מלכודת לבוטים
     if (d.a === 'request') return handleRequest(d);          // בקשת גישה של מכשיר חדש
+    if (d.a === 'quiz') return handleQuiz(d);                // תוצאת מבחן תפריט
     const cat = clip(d.cat, 100).trim(), title = clip(d.title, 200).trim(), field = clip(d.field, 30);
     const proposed = clip(d.proposed, 5000).trim();
     const sender = clean(clip(d.sender, 60)).trim();
@@ -352,6 +358,47 @@ function notify(subject, body, flag) {
       subject || 'יש בקשות תיקון חדשות בספר המתכונים',
       body || 'לאישור: טאב "' + REQUESTS_SHEET + '" בגיליון\n' + SpreadsheetApp.getActive().getUrl());
   } catch (err) {}
+}
+
+// ============ מבחן תפריט ============
+// האתר (menu/quiz.html) בונה את המבחן ומחשב ציון. כאן מאמתים את הקוד של המלצר, רושמים בטאב ושולחים מייל.
+// הקוד מגיע מהטאב "מלצרים". הציון מחושב בדפדפן, ולכן הוא לא הוכחה: מתאים לבדיקה פנימית, לא להחלטות שכר או פיטורים.
+function waiterByCode(code) {
+  code = clean(clip(code, 30)).trim();
+  if (!code) return null;
+  const sh = SpreadsheetApp.getActive().getSheetByName(WAITERS_SHEET);
+  if (!sh) return null;
+  const rows = sh.getDataRange().getDisplayValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][1]).trim() === code && String(rows[i][0]).trim()) return { name: String(rows[i][0]).trim() };
+  }
+  return null;
+}
+
+function handleQuiz(d) {
+  const w = waiterByCode(d.code);
+  if (!w) return reply('badcode');
+  const total = Math.round(Number(d.total)), right = Math.round(Number(d.right));
+  if (!(total >= 1 && total <= 100) || !(right >= 0 && right <= total)) return reply('invalid');
+  const code = clean(clip(d.code, 30)).trim();
+  const day = Utilities.formatDate ? Utilities.formatDate(new Date(), 'Asia/Jerusalem', 'yyyyMMdd') : String(new Date().getUTCDate());
+  const cache = CacheService.getScriptCache(), key = 'quiz-' + code + '-' + day;
+  const n = Number(cache.get(key) || 0);
+  if (n >= QUIZ_MAX_PER_DAY) return reply('busy');
+  cache.put(key, String(n + 1), 86400);
+  const pct = Math.round(right * 100 / total), pass = pct >= 70;
+  const wrong = (Array.isArray(d.wrong) ? d.wrong : []).slice(0, 40).map(x =>
+    '• ' + clean(clip(x && x.q, 200)) + '\n   ענה: ' + clean(clip(x && x.chosen, 120)) + ' | נכון: ' + clean(clip(x && x.correct, 120)));
+  let sh = SpreadsheetApp.getActive().getSheetByName(QUIZ_RESULTS_SHEET);
+  if (!sh) { sh = SpreadsheetApp.getActive().insertSheet(QUIZ_RESULTS_SHEET); sh.appendRow(['זמן', 'שם', 'קוד', 'ציון %', 'נכונות', 'סה"כ', 'עבר', 'טעויות', 'גרסה']); }
+  sh.appendRow([new Date(), w.name, code, pct, right, total, pass ? 'כן' : 'לא', wrong.join('\n'), clean(clip(d.version, 12))].map(safe));
+  try {
+    MailApp.sendEmail(QUIZ_EMAIL || Session.getEffectiveUser().getEmail(),
+      'מבחן תפריט: ' + w.name + ', ' + pct + '% (' + (pass ? 'עבר' : 'לא עבר') + ')',
+      'גרסה ' + clean(clip(d.version, 12)) + '. ' + w.name + ' ענה נכון על ' + right + ' מתוך ' + total + ' (' + pct + '%).\n' + (pass ? 'עבר' : 'לא עבר') + ' (ציון עובר: 70%).\n\n' +
+      (wrong.length ? 'טעויות:\n' + wrong.join('\n') : 'בלי טעויות.'));
+  } catch (err) {}
+  return reply('ok');
 }
 
 const clip = (v, n) => String(v == null ? '' : v).slice(0, n);
