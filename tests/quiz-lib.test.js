@@ -100,3 +100,8 @@ test('גרסאות: שינוי מחיר בתפריט משנה את טביעת ה
   assert.notStrictEqual(Q.menuHash(m3), h);
   assert.strictEqual(Q.menuHash(JSON.parse(JSON.stringify(menu))), h);
 });
+
+test('גרסאות: טביעת האצבע לא תלויה בסדר המנות בקובץ', () => {
+  const m2 = JSON.parse(JSON.stringify(menu)); m2.items.reverse();
+  assert.strictEqual(Q.menuHash(m2), Q.menuHash(menu));
+});

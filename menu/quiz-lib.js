@@ -166,7 +166,7 @@
   // טביעת אצבע של התוכן שהשאלות נשענות עליו. אם התפריט משתנה, הגרסאות שאושרו כבר לא בהכרח נכונות
   function menuHash(menu) {
     const m = L.normalizeMenu(menu);
-    const str = JSON.stringify(m.items.filter(x => x.visible !== false).map(x => [x.name, x.price, x.gluten, x.lactose, x.vegan, x.mods || '', x.glutenNote || '', x.lactoseNote || '', x.pregnancy || []]));
+    const str = JSON.stringify(m.items.filter(x => x.visible !== false).sort((a, b) => String(a.id) < String(b.id) ? -1 : 1).map(x => [x.name, x.price, x.gluten, x.lactose, x.vegan, x.mods || '', x.glutenNote || '', x.lactoseNote || '', x.pregnancy || []]));
     let h = 5381;
     for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0;
     return h.toString(36);
