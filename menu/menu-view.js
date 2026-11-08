@@ -1,12 +1,12 @@
 // דף המלצרים: צפייה בלבד. דף אחד ארוך עם כל המנות לפי הסדר וכל הפרטים גלויים.
-// הנתונים מ-Firebase (צומת menu), עם גיבוי מקובץ menu-data.json ומהמטמון האחרון בטלפון.
+// הנתונים מקובץ menu-data.json. ב-?preview מוצגת הטיוטה מדף העריכה (באותו דפדפן), כדי לראות לפני שמחליפים את הקובץ.
 (function () {
   const L = window.MenuLib;
   const $ = (s, r) => (r || document).querySelector(s);
   const state = { menu: { categories: [], items: [] }, q: '', avoid: new Set(), vegan: false };
 
-  // esc מגיע מ-firebase-init.js; אם הוא לא נטען (אופליין) נשתמש בגרסה מקומית
-  const escf = typeof esc === 'function' ? esc : v => String(v == null ? '' : v).replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]));
+  // הגנה מפני הזרקת HTML: כל טקסט מהקובץ עובר escape לפני שנכנס ל-innerHTML
+  const escf = v => String(v == null ? '' : v).replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]));
   function imgSrc(p) {
     if (typeof p !== 'string') return '';
     if (/^img\/[\w.-]+\.webp$/.test(p)) return p;
@@ -16,44 +16,21 @@
   }
 
   // ---------- נתונים ----------
-  function setMenu(raw, fromCache) {
+  const PREVIEW = /[?&]preview\b/.test(location.search);
+  function setMenu(raw) {
     state.menu = L.normalizeMenu(raw);
-    $('#status').hidden = true;
+    $('#status').hidden = !PREVIEW;
+    if (PREVIEW) $('#status').textContent = 'תצוגה מקדימה של הטיוטה מדף העריכה. המלצרים עדיין לא רואים את זה.';
     render();
-    if (!fromCache) {
-      try { localStorage.setItem('menu_cache_v1', JSON.stringify(raw)); } catch (e) {}
-    }
   }
-
-  function loadFallback() {
-    return fetch('menu-data.json', { cache: 'no-cache' }).then(r => r.json()).then(seed => {
-      const o = { categories: {}, items: {} };
-      seed.categories.forEach(c => (o.categories[c.id] = c));
-      seed.items.forEach(i => (o.items[i.id] = i));
-      return o;
-    });
+  function draft() {
+    try { const d = JSON.parse(localStorage.getItem('menu_draft_v1') || 'null'); return d && d.items ? d : null; } catch (e) { return null; }
   }
-
-  function init() {
-    let got = false;
-    // מטמון מקומי קודם: כך הדף עולה מיד גם בלי קליטה
-    try {
-      const c = JSON.parse(localStorage.getItem('menu_cache_v1') || 'null');
-      if (c && c.items) { setMenu(c, true); got = true; }
-    } catch (e) {}
-    const fallback = () => { if (!got) loadFallback().then(o => { got = true; setMenu(o, true); }).catch(showError); };
-    // אם ספריית Firebase לא נטענה, firebase-init.js נופל באמצע ו-db נשאר באזור מת (TDZ), ולכן try
-    let hasDb = false;
-    try { hasDb = typeof db !== 'undefined' && !!db; } catch (e) {}
-    if (hasDb) {
-      db.ref('menu').on('value', snap => {
-        const v = snap.val();
-        if (v && v.items) { got = true; setMenu(v); } else fallback();
-      }, fallback);
-      setTimeout(() => { if (!got) fallback(); }, 4000);
-    } else fallback();
+  function load() {
+    if (PREVIEW && draft()) return setMenu(draft());
+    fetch('menu-data.json', { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(setMenu).catch(showError);
   }
-
   function showError() {
     const s = $('#status');
     s.hidden = false;
@@ -147,6 +124,8 @@
   });
   $('#q').addEventListener('input', e => { state.q = e.target.value; render(); });
 
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('menu-sw.js').catch(() => {});
-  init();
+  // בתצוגה מקדימה, כל שינוי בדף העריכה מתעדכן כאן מיד
+  if (PREVIEW) window.addEventListener('storage', e => { if (e.key === 'menu_draft_v1' && draft()) setMenu(draft()); });
+  if (!PREVIEW && 'serviceWorker' in navigator) navigator.serviceWorker.register('menu-sw.js').catch(() => {});
+  load();
 })();

@@ -33,15 +33,13 @@ test('נתוני ההתחלה: לכל מנה בקובץ יש סימון גלוט
   assert.deepStrictEqual(missing, ['צלחת חריפים']);
 });
 
-test('normalizeMenu ממיר אובייקטים של Firebase למערכים ממוינים ומחזיר תמונות שהועלו', () => {
+test('normalizeMenu ממיין מערכים (וגם אובייקטים) לפי order', () => {
   const m = L.normalizeMenu({
     categories: { b: { id: 'b', name: 'ב', order: 2 }, a: { id: 'a', name: 'א', order: 1 } },
-    items: { d1: item({ id: 'd1', order: 2, image: '@fb' }), d2: item({ id: 'd2', order: 1 }) },
-    images: { d1: 'data:image/webp;base64,AAAA' }
+    items: { d1: item({ id: 'd1', order: 2 }), d2: item({ id: 'd2', order: 1 }) }
   });
   assert.deepStrictEqual(m.categories.map(c => c.id), ['a', 'b']);
   assert.deepStrictEqual(m.items.map(i => i.id), ['d2', 'd1']);
-  assert.strictEqual(m.items[1].image, 'data:image/webp;base64,AAAA');
 });
 
 test('normalizeMenu עם נתון ריק לא נופל', () => {
@@ -103,12 +101,20 @@ test('validateItem', () => {
   assert.deepStrictEqual(L.validateItem(item({})), []);
 });
 
-test('toFirebase: תמונות שהועלו עוברות לצומת נפרד, ושדות ריקים לא נשלחים כמערך ריק', () => {
-  const out = L.toFirebase([{ id: 'a', name: 'א', order: 1 }], [item({ id: 'd1', image: 'data:image/webp;base64,AAAA', notes: [] }), item({ id: 'd2', image: 'img/x.webp' })]);
-  assert.strictEqual(out.items.d1.image, '@fb');
-  assert.strictEqual(out.images.d1, 'data:image/webp;base64,AAAA');
-  assert.strictEqual(out.items.d2.image, 'img/x.webp');
-  assert.strictEqual(out.items.d1.notes, null);
-  assert.ok(out.updated > 0);
-  assert.strictEqual(L.toFirebase([], []).images, null);
+test('toExport: מערכים ממוינים, סדר קטגוריות רציף, ונקרא חזרה ללא שינוי', () => {
+  const cats = [{ id: 'b', name: 'ב', order: 5 }, { id: 'a', name: 'א', short: 'א׳', order: 2 }];
+  const items = [item({ id: 'd2', order: 2 }), item({ id: 'd1', order: 1, image: 'data:image/webp;base64,AAAA' })];
+  const out = L.toExport(cats, items);
+  assert.deepStrictEqual(out.categories.map(c => [c.id, c.order, c.short]), [['a', 1, 'א׳'], ['b', 2, 'ב']]);
+  assert.deepStrictEqual(out.items.map(i => i.id), ['d1', 'd2']);
+  const back = L.normalizeMenu(JSON.parse(JSON.stringify(out)));
+  assert.deepStrictEqual(back.items.map(i => i.id), ['d1', 'd2']);
+  assert.strictEqual(back.items[0].image, 'data:image/webp;base64,AAAA');
+});
+
+test('הקובץ שיוצא מדף העריכה מהנתונים ההתחלתיים זהה בתוכן לנתונים ההתחלתיים', () => {
+  const m = L.normalizeMenu(seed);
+  const out = L.toExport(m.categories, m.items);
+  assert.strictEqual(out.items.length, seed.items.length);
+  assert.deepStrictEqual(out.items.map(i => i.name), seed.items.map(i => i.name));
 });

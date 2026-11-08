@@ -22,32 +22,21 @@
   [hidden]{display:none !important;}
   .muted{color:var(--text-dim);font-size:14px;}
 
-  #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--green);}
-  .box{background:var(--cream);border-radius:24px;padding:28px 24px;width:100%;max-width:380px;}
-  .box img{display:block;height:34px;margin:0 auto 6px;filter:invert(1) hue-rotate(180deg) brightness(.25);}
-  .box h1{font-size:20px;text-align:center;margin:8px 0 18px;color:var(--green);}
-  .box label{display:block;font-size:14px;color:var(--text-dim);margin:12px 0 4px;}
-  .box input{width:100%;min-height:48px;border:1px solid var(--line);border-radius:14px;padding:10px 14px;background:#fff;}
-  .box input:focus,.field:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px var(--green-soft);}
   .btn{background:var(--green);color:#fff;border:none;border-radius:999px;min-height:48px;padding:10px 22px;font-weight:500;}
   .btn.ghost{background:transparent;color:var(--green);border:1px solid var(--green);}
   .btn.danger{background:#fff;color:#b3261e;border:1px solid #e3b4b0;}
   .btn.small{min-height:40px;padding:6px 16px;font-size:14px;}
   .btn:disabled{opacity:.45;cursor:default;}
-  .box .btn{width:100%;margin-top:18px;}
-  #loginMsg{color:#b3261e;min-height:22px;margin-top:10px;font-size:14px;text-align:center;}
 
   .bar{position:sticky;top:0;z-index:6;background:var(--green);color:#fff;display:flex;gap:10px;align-items:center;padding:10px 16px;}
   .bar .ttl{font-weight:600;flex:1;}
-  .bar .who{font-size:12px;opacity:.75;display:none;}
-  @media (min-width:640px){.bar .who{display:block;}}
   .bar a,.bar button{color:#fff;}
   .bar .link{background:none;border:1px solid rgba(255,255,255,.4);border-radius:999px;min-height:40px;padding:6px 14px;font-size:14px;text-decoration:none;display:inline-flex;align-items:center;}
-  #publish{background:var(--accent);color:#fff;border:none;border-radius:999px;min-height:44px;padding:8px 20px;font-weight:600;position:relative;}
-  #publish:disabled{background:rgba(255,255,255,.2);color:rgba(255,255,255,.6);}
-  #dirtyDot{position:absolute;top:6px;left:8px;width:10px;height:10px;border-radius:50%;background:#ffd24a;}
+  #download{background:var(--accent);color:#fff;border:none;border-radius:999px;min-height:44px;padding:8px 20px;font-weight:600;}
+  #howto{background:var(--gold-soft);border-radius:14px;padding:12px 16px;margin:12px 0;color:#5f5024;line-height:1.55;font-size:15px;}
+  #draftNote{display:block;margin-top:6px;}
+  #resetDraft{background:none;border:none;text-decoration:underline;color:#5f5024;padding:0;min-height:32px;font-size:15px;}
   .wrap{max-width:760px;margin:0 auto;padding:12px 16px 80px;}
-  #banner{background:var(--gold-soft);border-radius:14px;padding:12px 16px;margin:12px 0;color:#6b5a2b;line-height:1.5;}
   .tabs{display:flex;gap:8px;margin:12px 0;}
   .tabs button{flex:1;min-height:46px;border:1px solid var(--line);background:transparent;border-radius:999px;color:var(--text-dim);}
   .tabs button.on{background:var(--green);color:#fff;border-color:var(--green);}
@@ -98,29 +87,15 @@
 </head>
 <body>
 
-<div id="login">
-  <form class="box" id="loginForm">
-    <img src="../roberta-logo.png" alt="רוברטה וינצ'י">
-    <h1>ניהול ספר מנות</h1>
-    <label for="email">מייל</label>
-    <input id="email" type="email" autocomplete="username" required>
-    <label for="pass">סיסמה</label>
-    <input id="pass" type="password" autocomplete="current-password" required>
-    <button class="btn" id="loginBtn" type="submit">כניסה</button>
-    <div id="loginMsg" role="alert"></div>
-  </form>
-</div>
-
-<div id="app" hidden>
+<div id="app">
   <div class="bar">
-    <span class="ttl">ניהול מנות</span>
-    <span class="who" id="who"></span>
-    <a class="link" href="index.html" target="_blank" rel="noopener">תצוגת מלצר</a>
-    <button class="link" id="logout">יציאה</button>
-    <button id="publish" disabled>פרסם<span id="dirtyDot" hidden></span></button>
+    <span class="ttl">עריכת מנות</span>
+    <a class="link" href="index.html?preview" target="_blank" rel="noopener">תצוגה מקדימה</a>
+    <button id="download">הורד קובץ</button>
   </div>
   <div class="wrap">
-    <div id="banner" hidden>התפריט עדיין לא פורסם ב-Firebase. זה התפריט ההתחלתי מקובץ אפריל 26. לחץ "פרסם" כדי להפעיל עריכה חיה.</div>
+    <div id="howto">השינויים נשמרים כאן בדפדפן בלבד. כשסיימת, לחץ "הורד קובץ" והחלף את <b>menu/menu-data.json</b> באתר. עד אז המלצרים רואים את התפריט הקודם.
+      <span id="draftNote" hidden>יש כאן טיוטה שלא הורדה. <button id="resetDraft" type="button">זרוק טיוטה</button></span></div>
     <div class="tabs"><button id="tabItems" class="on">מנות</button><button id="tabCats">קטגוריות</button></div>
     <div id="paneItems"></div>
     <div id="paneCats" hidden></div>
@@ -173,10 +148,6 @@
 
 <div id="toast" role="status"></div>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="../firebase-init.js"></script>
 <script src="menu-lib.js"></script>
 <script src="menu-admin.js"></script>
 </body>

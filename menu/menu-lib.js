@@ -21,18 +21,16 @@
     return Array.isArray(v) ? v.filter(Boolean) : Object.keys(v).map(k => v[k]).filter(Boolean);
   }
 
-  // Firebase מחזיר אובייקטים ולא מערכים. מנרמל לצורה אחת, ממוין לפי order.
+  // מנרמל לצורה אחת (מערכים, ממוין לפי order). מקבל גם אובייקטים לפי id.
   function normalizeMenu(raw) {
     raw = raw || {};
     const byOrder = (a, b) => (a.order || 0) - (b.order || 0);
     const categories = toList(raw.categories).map(c => Object.assign({}, c)).sort(byOrder);
-    const images = raw.images || {};
     const items = toList(raw.items).map(it => {
       const o = Object.assign({ visible: true, allergens: [], notes: [], pregnancy: [], vegan: false, gluten: 'unknown', lactose: 'unknown' }, it);
       o.allergens = toList(o.allergens);
       o.notes = toList(o.notes);
       o.pregnancy = toList(o.pregnancy);
-      if (o.image === '@fb') o.image = images[o.id] || '';
       return o;
     }).sort(byOrder);
     return { categories, items };
@@ -130,24 +128,14 @@
     return errs;
   }
 
-  // המרה לצורה שנשמרת ב-Firebase: מנות לפי id, תמונות שהועלו בנפרד (כדי שהצומת הראשי יישאר קל)
-  function toFirebase(categories, items) {
-    const cats = {}, its = {}, images = {};
-    categories.forEach(c => (cats[c.id] = { id: c.id, name: c.name, short: c.short || c.name, order: c.order }));
-    items.forEach(it => {
-      const o = Object.assign({}, it);
-      if (typeof o.image === 'string' && o.image.indexOf('data:image/') === 0) {
-        images[o.id] = o.image;
-        o.image = '@fb';
-      }
-      o.notes = o.notes && o.notes.length ? o.notes : null;
-      o.pregnancy = o.pregnancy && o.pregnancy.length ? o.pregnancy : null;
-      o.allergens = o.allergens && o.allergens.length ? o.allergens : null;
-      Object.keys(o).forEach(k => o[k] === undefined && delete o[k]);
-      its[o.id] = o;
-    });
-    return { categories: cats, items: its, images: Object.keys(images).length ? images : null, updated: Date.now() };
+  // הקובץ שמורידים מדף העריכה (menu-data.json): מערכים, בלי שדות ריקים מיותרים
+  function toExport(categories, items) {
+    return {
+      version: 1,
+      categories: categories.slice().sort((a, b) => a.order - b.order).map((c, i) => ({ id: c.id, name: c.name, short: c.short || c.name, order: i + 1 })),
+      items: items.slice().sort((a, b) => a.order - b.order).map(it => Object.assign({}, it))
+    };
   }
 
-  return { ALLERGENS, ALLERGEN_LABEL, normalizeMenu, status, filterItems, moveItem, renumber, moveCategory, nextId, validateItem, toFirebase };
+  return { ALLERGENS, ALLERGEN_LABEL, normalizeMenu, status, filterItems, moveItem, renumber, moveCategory, nextId, validateItem, toExport };
 });

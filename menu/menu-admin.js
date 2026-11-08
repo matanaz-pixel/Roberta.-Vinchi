@@ -1,9 +1,11 @@
-// דף המנהל: כניסה עם מייל וסיסמה (Firebase Auth), עריכת מנות, תמונות, קטגוריות וסדר. השינויים נשמרים בטיוטה ומתפרסמים בלחיצה.
+// דף העריכה: בלי שרת ובלי כניסה. עורכים בדפדפן (הטיוטה נשמרת אוטומטית בדפדפן הזה), מורידים menu-data.json ומחליפים אותו באתר.
+// מה שעושים כאן לא משפיע על המלצרים עד שמחליפים את הקובץ.
 (function () {
   const L = window.MenuLib;
   const $ = (s, r) => (r || document).querySelector(s);
-  const escf = typeof esc === 'function' ? esc : v => String(v == null ? '' : v).replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]));
-  const S = { cats: [], items: [], dirty: false, loadedAt: 0, tab: 'items', editing: null, empty: false };
+  const escf = v => String(v == null ? '' : v).replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]));
+  const DRAFT = 'menu_draft_v1';
+  const S = { cats: [], items: [], draft: false, tab: 'items', editing: null };
 
   function imgSrc(p) {
     if (typeof p !== 'string') return '';
@@ -18,50 +20,32 @@
     clearTimeout(toast.h);
     toast.h = setTimeout(() => (t.className = ''), 3500);
   }
-  function touch() { S.dirty = true; $('#publish').disabled = false; $('#dirtyDot').hidden = false; }
-
-  // ---------- כניסה ----------
-  function boot() {
-    let hasDb = false;
-    try { hasDb = typeof firebase !== 'undefined' && typeof db !== 'undefined' && !!db && !!firebase.auth; } catch (e) {}
-    if (!hasDb) {
-      $('#loginMsg').textContent = 'לא הצלחתי לטעון את Firebase. בדוק חיבור לאינטרנט.';
-      return;
-    }
-    firebase.auth().onAuthStateChanged(u => {
-      $('#login').hidden = !!u;
-      $('#app').hidden = !u;
-      if (u) { $('#who').textContent = u.email; load(); }
-    });
+  // כל שינוי נשמר מיד כטיוטה בדפדפן
+  function touch() {
+    S.draft = true;
+    try { localStorage.setItem(DRAFT, JSON.stringify(L.toExport(S.cats, S.items))); $('#draftNote').hidden = false; }
+    catch (e) { toast('אין מקום לשמור טיוטה בדפדפן. הורד קובץ עכשיו.', true); }
   }
-  $('#loginForm').addEventListener('submit', e => {
-    e.preventDefault();
-    const btn = $('#loginBtn');
-    btn.disabled = true;
-    $('#loginMsg').textContent = '';
-    firebase.auth().signInWithEmailAndPassword($('#email').value.trim(), $('#pass').value)
-      .catch(err => { $('#loginMsg').textContent = /user-not-found|wrong-password|invalid-credential|invalid-login/.test(err.code || err.message) ? 'מייל או סיסמה לא נכונים' : 'הכניסה נכשלה: ' + (err.code || err.message); })
-      .finally(() => (btn.disabled = false));
-  });
 
   // ---------- טעינה ----------
   function load() {
-    db.ref('menu').once('value').then(snap => {
-      const v = snap.val();
-      if (v && v.items) {
-        const m = L.normalizeMenu(v);
-        S.cats = m.categories; S.items = m.items; S.loadedAt = v.updated || 0; S.empty = false;
-        render();
-      } else {
-        S.empty = true;
-        return fetch('menu-data.json').then(r => r.json()).then(seed => { S.cats = seed.categories; S.items = seed.items; render(); touch(); });
-      }
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(DRAFT) || 'null'); } catch (e) {}
+    if (d && d.items) {
+      const m = L.normalizeMenu(d);
+      S.cats = m.categories; S.items = m.items; S.draft = true;
+      $('#draftNote').hidden = false;
+      render();
+      return;
+    }
+    fetch('menu-data.json', { cache: 'no-cache' }).then(r => r.json()).then(seed => {
+      const m = L.normalizeMenu(seed);
+      S.cats = m.categories; S.items = m.items; render();
     }).catch(err => toast('הטעינה נכשלה: ' + err.message, true));
   }
 
   // ---------- תצוגה ----------
   function render() {
-    $('#banner').hidden = !S.empty;
     $('#tabItems').classList.toggle('on', S.tab === 'items');
     $('#tabCats').classList.toggle('on', S.tab === 'cats');
     $('#paneItems').hidden = S.tab !== 'items';
@@ -177,18 +161,22 @@
     img.src = url;
   }
 
-  // ---------- פרסום ----------
-  function publish() {
-    const btn = $('#publish');
-    btn.disabled = true;
+  // ---------- הורדת הקובץ ----------
+  function download() {
     const bad = S.items.map(i => ({ i, e: L.validateItem(i) })).find(x => x.e.length);
-    if (bad) { toast('יש מנה לא תקינה: ' + bad.i.name + ' (' + bad.e.join(', ') + ')', true); btn.disabled = false; return; }
-    db.ref('menu/updated').once('value').then(s => {
-      const remote = s.val() || 0;
-      if (remote && remote !== S.loadedAt && !confirm('התפריט עודכן ממכשיר אחר מאז שפתחת את הדף. לדרוס את העדכון?')) { btn.disabled = false; throw new Error('בוטל'); }
-      const payload = L.toFirebase(S.cats, S.items);
-      return db.ref('menu').set(payload).then(() => { S.loadedAt = payload.updated; S.dirty = false; S.empty = false; $('#dirtyDot').hidden = true; render(); toast('התפריט פורסם. המלצרים יראו אותו מיד.'); });
-    }).catch(err => { if (err.message !== 'בוטל') { toast(/PERMISSION_DENIED/i.test(err.message) ? 'אין הרשאת כתיבה. בדוק שכללי Firebase הוגדרו והמייל שלך מופיע בהם.' : 'הפרסום נכשל: ' + err.message, true); btn.disabled = false; } });
+    if (bad) { toast('יש מנה לא תקינה: ' + bad.i.name + ' (' + bad.e.join(', ') + ')', true); return; }
+    const json = JSON.stringify(L.toExport(S.cats, S.items), null, 1);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    a.download = 'menu-data.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    toast('הקובץ ירד. כדי שהמלצרים יראו את השינויים, החלף בו את menu/menu-data.json באתר.');
+  }
+  function resetDraft() {
+    if (!confirm('לזרוק את כל השינויים ולחזור לתפריט שבאתר?')) return;
+    try { localStorage.removeItem(DRAFT); } catch (e) {}
+    S.draft = false; $('#draftNote').hidden = true; load();
   }
 
   // ---------- אירועים ----------
@@ -208,8 +196,8 @@
     else if (t.id === 'addCat') { const n = S.cats.length + 1; S.cats.push({ id: 'c' + Date.now().toString(36), name: 'קטגוריה חדשה', short: 'חדשה', order: n }); touch(); render(); }
     else if (t.id === 'tabItems') { S.tab = 'items'; render(); }
     else if (t.id === 'tabCats') { S.tab = 'cats'; render(); }
-    else if (t.id === 'publish') publish();
-    else if (t.id === 'logout') { if (!S.dirty || confirm('יש שינויים שלא פורסמו. לצאת בכל זאת?')) firebase.auth().signOut(); }
+    else if (t.id === 'download') download();
+    else if (t.id === 'resetDraft') resetDraft();
     else if (t.id === 'saveItem') saveEdit();
     else if (t.id === 'cancelItem') closeEdit();
     else if (t.id === 'rmImg') { S.editing.image = ''; showPreview(); }
@@ -224,6 +212,5 @@
   });
   $('#file').addEventListener('change', e => { handleFile(e.target.files[0]); e.target.value = ''; });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.editing) closeEdit(); });
-  window.addEventListener('beforeunload', e => { if (S.dirty) { e.preventDefault(); e.returnValue = ''; } });
-  boot();
+  load();
 })();

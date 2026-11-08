@@ -1,7 +1,7 @@
 // Service worker של ספר המנות בלבד (נפרד מהאפליקציות האחרות). דפים: קודם הרשת (עד 4 שניות), אחרת המכשיר.
 // תמונות וגופנים: מהמכשיר ובמקביל מתעדכנים, כך שמלצר בלי קליטה בחדר האוכל עדיין רואה את הכול.
-const VERSION = 'menu-v1';
-const SHELL = ['./index.html', './menu-lib.js', './menu-view.js', './menu-data.json', './menu.webmanifest', '../roberta-logo-white.svg', '../firebase-init.js'];
+const VERSION = 'menu-v2';
+const SHELL = ['./index.html', './menu-lib.js', './menu-view.js', './menu-data.json', './menu.webmanifest', '../roberta-logo-white.svg'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -32,7 +32,7 @@ self.addEventListener('fetch', e => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== 'GET') return;
   if (url.origin === location.origin) {
-    if (!url.pathname.includes('/menu/') && !url.pathname.endsWith('/firebase-init.js') && !url.pathname.endsWith('.svg')) return;
+    if (!url.pathname.includes('/menu/') && !url.pathname.endsWith('.svg')) return;
     if (url.pathname.endsWith('.webp')) return e.respondWith(staleWhileRevalidate(req));
     return e.respondWith(networkFirst(req, 4000));
   }
