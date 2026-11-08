@@ -66,7 +66,7 @@
     const blob = new Blob([JSON.stringify(S.data)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'quiz-data.json';
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    toast('הקובץ ירד. החלף בו את menu/quiz-data.json באתר.');
+    toast('הקובץ ירד. אם השם שלו כולל מספר בסוגריים, שנה אותו ל-quiz-data.json לפני ההעלאה.');
   }
 
   $('#download').addEventListener('click', download);
