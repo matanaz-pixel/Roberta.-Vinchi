@@ -42,7 +42,10 @@
       if (c && c.items) { setMenu(c, true); got = true; }
     } catch (e) {}
     const fallback = () => { if (!got) loadFallback().then(o => { got = true; setMenu(o, true); }).catch(showError); };
-    if (typeof db !== 'undefined') {
+    // אם ספריית Firebase לא נטענה, firebase-init.js נופל באמצע ו-db נשאר באזור מת (TDZ), ולכן try
+    let hasDb = false;
+    try { hasDb = typeof db !== 'undefined' && !!db; } catch (e) {}
+    if (hasDb) {
       db.ref('menu').on('value', snap => {
         const v = snap.val();
         if (v && v.items) { got = true; setMenu(v); } else fallback();
@@ -78,7 +81,8 @@
   }
 
   function renderChips() {
-    const cats = state.menu.categories;
+    // רק קטגוריות שיש בהן מנה מוצגת
+    const cats = state.menu.categories.filter(c => state.menu.items.some(i => i.cat === c.id && i.visible !== false));
     const box = $('#cats');
     box.innerHTML = '<button class="chip' + (state.cat === 'all' ? ' on' : '') + '" data-cat="all">הכל</button>' +
       cats.map(c => '<button class="chip' + (state.cat === c.id ? ' on' : '') + '" data-cat="' + escf(c.id) + '">' + escf(c.short || c.name) + '</button>').join('');

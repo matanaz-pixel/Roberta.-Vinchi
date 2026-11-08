@@ -22,7 +22,9 @@
 
   // ---------- כניסה ----------
   function boot() {
-    if (typeof firebase === 'undefined' || typeof db === 'undefined' || !firebase.auth) {
+    let hasDb = false;
+    try { hasDb = typeof firebase !== 'undefined' && typeof db !== 'undefined' && !!db && !!firebase.auth; } catch (e) {}
+    if (!hasDb) {
       $('#loginMsg').textContent = 'לא הצלחתי לטעון את Firebase. בדוק חיבור לאינטרנט.';
       return;
     }
