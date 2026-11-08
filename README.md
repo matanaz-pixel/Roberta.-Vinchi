@@ -30,7 +30,7 @@
 ### הגדרה חד-פעמית
 1. Firebase Console > Authentication > Sign-in method: להפעיל Email/Password. ליצור משתמש אחד (המייל והסיסמה של המנהל).
 2. Authentication > Settings > User actions: לכבות "Enable create (sign-up)". בלי זה כל אחד שמכיר את מפתח ה-API יכול ליצור משתמש.
-3. Realtime Database > Rules: להוסיף את הצומת `menu` מתוך `docs/menu-rules.json` לתוך `rules`, ולהחליף `REPLACE_WITH_ADMIN_EMAIL` במייל של המנהל. לבדוק ב-Rules Playground: קריאה בלי כניסה מותרת, כתיבה בלי כניסה נחסמת.
+3. Realtime Database > Rules: להוסיף את הצומת `menu` מתוך `docs/menu-rules.json` לתוך `rules`, (המייל של המנהל כבר מוגדר בו: matanaz@gmail.com). לבדוק ב-Rules Playground: קריאה בלי כניסה מותרת, כתיבה בלי כניסה נחסמת.
 4. לפתוח את `menu/admin.html`, להיכנס, ללחוץ "פרסם". מרגע זה המלצרים רואים את הנתונים מ-Firebase.
 
 ## בדיקת נתונים
