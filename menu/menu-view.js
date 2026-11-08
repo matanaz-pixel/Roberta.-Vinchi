@@ -3,7 +3,7 @@
 (function () {
   const L = window.MenuLib;
   const $ = (s, r) => (r || document).querySelector(s);
-  const state = { menu: { categories: [], items: [] }, q: '', avoid: new Set(), vegan: false };
+  const state = { menu: { categories: [], items: [] } };
 
   // הגנה מפני הזרקת HTML: כל טקסט מהקובץ עובר escape לפני שנכנס ל-innerHTML
   const escf = v => String(v == null ? '' : v).replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]));
@@ -69,21 +69,12 @@
       '</div></article>';
   }
 
-  function renderFilters() {
-    $('#allergens').innerHTML = '<button class="chip small' + (state.vegan ? ' on' : '') + '" data-vegan="1">רק טבעוני</button>' +
-      L.ALLERGENS.map(a => '<button class="chip small' + (state.avoid.has(a.key) ? ' on' : '') + '" data-avoid="' + a.key + '">בלי ' + a.label + '</button>').join('');
-    const n = state.avoid.size + (state.vegan ? 1 : 0) + (state.q.trim() ? 1 : 0);
-    $('#filterBtn').textContent = n ? 'חיפוש וסינון (' + n + ')' : 'חיפוש וסינון';
-    $('#filterBtn').classList.toggle('on', n > 0);
-  }
-
   function render() {
-    renderFilters();
-    const f = L.filterItems(state.menu.items, { q: state.q, avoid: [...state.avoid], vegan: state.vegan });
+    const f = L.filterItems(state.menu.items, {});
     const cats = state.menu.categories.filter(c => f.some(i => i.cat === c.id));
     const list = $('#list');
     if (!f.length) {
-      list.innerHTML = '<p class="empty">לא נמצאו מנות. אפשר לנקות את החיפוש או את הסינון.</p>';
+      list.innerHTML = '<p class="empty">אין מנות להצגה.</p>';
     } else {
       list.innerHTML = cats.map(c =>
         '<section class="cat" id="cat-' + escf(c.id) + '"><h2 class="cat-title">' + escf(c.name) + '</h2>' +
@@ -116,13 +107,8 @@
     const t = e.target.closest('button');
     if (!t) return;
     if (t.dataset.cat) { const s = document.getElementById('cat-' + t.dataset.cat); if (s) s.scrollIntoView({ block: 'start' }); }
-    else if (t.dataset.avoid) { const k = t.dataset.avoid; state.avoid.has(k) ? state.avoid.delete(k) : state.avoid.add(k); render(); }
-    else if (t.dataset.vegan) { state.vegan = !state.vegan; render(); }
-    else if (t.id === 'filterBtn') { const p = $('#panel'); p.hidden = !p.hidden; t.setAttribute('aria-expanded', String(!p.hidden)); if (!p.hidden) $('#q').focus(); }
-    else if (t.id === 'clear') { state.avoid.clear(); state.vegan = false; state.q = ''; $('#q').value = ''; render(); }
     else if (t.id === 'top') window.scrollTo({ top: 0 });
   });
-  $('#q').addEventListener('input', e => { state.q = e.target.value; render(); });
 
   // בתצוגה מקדימה, כל שינוי בדף העריכה מתעדכן כאן מיד
   if (PREVIEW) window.addEventListener('storage', e => { if (e.key === 'menu_draft_v1' && draft()) setMenu(draft()); });
