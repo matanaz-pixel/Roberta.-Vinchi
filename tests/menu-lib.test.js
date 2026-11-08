@@ -93,6 +93,7 @@ test('validateItem', () => {
   assert.strictEqual(L.validateItem(item({ name: '  ' })).length, 1);
   assert.strictEqual(L.validateItem(item({ price: 'abc' })).length, 1);
   assert.strictEqual(L.validateItem(item({ price: -3 })).length, 1);
+  assert.strictEqual(L.validateItem(item({ price: '' })).length, 1);
   assert.deepStrictEqual(L.validateItem(item({})), []);
 });
 

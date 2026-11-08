@@ -124,7 +124,7 @@
     const errs = [];
     if (!it.name || !String(it.name).trim()) errs.push('חסר שם למנה');
     const p = Number(it.price);
-    if (!isFinite(p) || p < 0 || p > 9999) errs.push('מחיר לא תקין');
+    if (it.price === '' || it.price == null || !isFinite(p) || p < 0 || p > 9999) errs.push('מחיר לא תקין');
     if (!it.cat) errs.push('חסרה קטגוריה');
     return errs;
   }

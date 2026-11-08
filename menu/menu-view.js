@@ -2,6 +2,7 @@
 (function () {
   const L = window.MenuLib;
   const $ = (s, r) => (r || document).querySelector(s);
+  let lastFocus = null;
   const state = { menu: { categories: [], items: [] }, cat: 'all', q: '', avoid: new Set(), vegan: false, open: null };
 
   // esc ו-safePhoto מגיעים מ-firebase-init.js; אם הוא לא נטען (אופליין) נשתמש בגרסה מקומית
@@ -118,6 +119,7 @@
     const it = state.menu.items.find(x => x.id === id);
     if (!it) return;
     state.open = id;
+    lastFocus = document.activeElement;
     const src = imgSrc(it.image);
     const al = [];
     L.ALLERGENS.forEach(a => {
@@ -149,6 +151,7 @@
     $('#sheet').hidden = true;
     document.body.classList.remove('lock');
     state.open = null;
+    if (lastFocus && lastFocus.focus && document.contains(lastFocus)) lastFocus.focus();
   }
 
   document.addEventListener('click', e => {
@@ -160,7 +163,7 @@
     else if (t.classList.contains('card')) openSheet(t.dataset.id);
     else if (t.id === 'sheetClose') closeSheet();
     else if (t.id === 'filterBtn') { const p = $('#allergens'); p.hidden = !p.hidden; t.setAttribute('aria-expanded', String(!p.hidden)); }
-    else if (t.id === 'clear') { state.avoid.clear(); state.vegan = false; state.q = ''; $('#q').value = ''; render(); }
+    else if (t.id === 'clear') { state.avoid.clear(); state.vegan = false; state.q = ''; state.cat = 'all'; $('#q').value = ''; render(); }
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && state.open) closeSheet(); });
   $('#q').addEventListener('input', e => { state.q = e.target.value; render(); });

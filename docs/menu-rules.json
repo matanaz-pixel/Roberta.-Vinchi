@@ -1,0 +1,10 @@
+{
+  "_comment": "כללי Firebase לצומת menu (ספר המנות). להוסיף בתוך rules ב-database.rules.json ולהחליף את המייל. קריאה פתוחה לכולם (המלצרים). כתיבה רק למנהל, לפי המייל שנכנס עם סיסמה.",
+  "menu": {
+    ".read": true,
+    ".write": "auth != null && auth.token.email_verified == true && auth.token.email == 'REPLACE_WITH_ADMIN_EMAIL'",
+    "images": {
+      "$id": { ".validate": "newData.isString() && newData.val().length < 450000" }
+    }
+  }
+}
