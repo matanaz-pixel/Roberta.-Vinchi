@@ -335,3 +335,43 @@ test('weekly report: missing counts, usage vs base, pending, lint', () => {
   assert.ok(txt.includes('סחוג: נצרך בממוצע 9') && txt.includes('כדאי להעלות'), txt);       // 1+9-1 = 9 מול בסיס 4
   assert.ok(txt.includes('בקשות תיקון שממתינות: 2') && txt.includes('חריף ← רוטב'), txt);
 });
+
+// ---- מבחן תפריט ----
+function quizEnv(){
+  const env = makeEnv();
+  env.sheets['מלצרים'] = new Sheet([['שם', 'קוד'], ['דנה', '4821'], ['', '9999']]);
+  return env;
+}
+const quizBody = { a: 'quiz', code: '4821', right: 15, total: 20, wrong: [{ q: 'כמה עולה "אפוגטו"?', chosen: '62 ₪', correct: '28 ₪' }] };
+test('quiz: valid code records the result and emails it', () => {
+  const env = quizEnv();
+  assert.strictEqual(env.get({ a: 'quizcode', c: '4821' }), 'ok');
+  assert.strictEqual(env.post(quizBody), 'ok');
+  const row = env.sheets['תוצאות מבחן'].rows[1];
+  assert.strictEqual(row[1], 'דנה'); assert.strictEqual(row[3], 75); assert.strictEqual(row[6], 'כן');
+  assert.strictEqual(env.mails.length, 1);
+  assert.match(env.mails[0][1], /דנה.*75%/);
+  assert.match(env.mails[0][2], /אפוגטו/);
+});
+test('quiz: wrong or empty code is rejected, nothing is written or sent', () => {
+  const env = quizEnv();
+  assert.strictEqual(env.get({ a: 'quizcode', c: '0000' }), 'bad');
+  assert.strictEqual(env.get({ a: 'quizcode', c: '9999' }), 'bad');   // קוד בלי שם
+  assert.strictEqual(env.post({ ...quizBody, code: '0000' }), 'badcode');
+  assert.strictEqual(env.post({ ...quizBody, code: '' }), 'badcode');
+  assert.strictEqual(env.sheets['תוצאות מבחן'], undefined);
+  assert.strictEqual(env.mails.length, 0);
+});
+test('quiz: nonsense scores are rejected, and the per-day limit holds', () => {
+  const env = quizEnv();
+  assert.strictEqual(env.post({ ...quizBody, right: 30 }), 'invalid');
+  assert.strictEqual(env.post({ ...quizBody, total: 0 }), 'invalid');
+  for(let i = 0; i < 3; i++) assert.strictEqual(env.post(quizBody), 'ok');
+  assert.strictEqual(env.post(quizBody), 'busy');
+  assert.strictEqual(env.mails.length, 3);
+});
+test('quiz: formulas in answers are neutralised in the sheet', () => {
+  const env = quizEnv();
+  env.post({ ...quizBody, wrong: [{ q: '=1+1', chosen: 'x', correct: 'y' }] });
+  assert.ok(String(env.sheets['תוצאות מבחן'].rows[1][7]).startsWith('•'));
+});

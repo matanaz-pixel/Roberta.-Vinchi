@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>מבחן תפריט | רוברטה וינצ'י</title>
+<meta name="theme-color" content="#023305">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="../roberta-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600&display=swap" media="print" onload="this.media='all'">
+<style>
+  :root{--green:#023305;--green-soft:#e6efe6;--cream:#fbf8f2;--card:#fff;--line:#e9e3d6;--text:#1d2a1e;--text-dim:#5b665b;--accent:#ef4823;--accent-soft:#fde8e2;--gold-soft:#f4ecd6;--ok:#1d7a34;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--cream);color:var(--text);font-family:'Rubik',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;}
+  button,input{font-family:inherit;font-size:17px;color:inherit;}
+  button{cursor:pointer;}
+  [hidden]{display:none !important;}
+  header.top{background:var(--green);color:#fff;display:flex;align-items:center;gap:12px;padding:12px 16px;padding-top:max(12px, env(safe-area-inset-top));}
+  header.top img{height:28px;width:auto;}
+  header.top .sub{font-size:13px;letter-spacing:.16em;color:#cfe0cf;flex:1;}
+  main{max-width:640px;margin:0 auto;padding:20px 16px calc(40px + env(safe-area-inset-bottom));}
+  h1{font-size:26px;color:var(--green);margin:8px 0 6px;}
+  p{line-height:1.6;}
+  .muted{color:var(--text-dim);font-size:15px;}
+  .field{width:100%;min-height:52px;border:1px solid var(--line);border-radius:14px;padding:10px 16px;background:#fff;font-size:20px;letter-spacing:.2em;text-align:center;}
+  .btn{background:var(--green);color:#fff;border:none;border-radius:999px;min-height:52px;padding:10px 28px;font-weight:600;width:100%;margin-top:14px;}
+  .btn.ghost{background:transparent;color:var(--green);border:1px solid var(--green);}
+  .btn:disabled{opacity:.4;cursor:default;}
+  .err{color:#b3261e;min-height:22px;margin-top:10px;font-size:15px;}
+  .bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin:6px 0 4px;}
+  .bar i{display:block;height:100%;background:var(--accent);transition:width .2s;}
+  .count{font-size:14px;color:var(--text-dim);}
+  .q{font-size:22px;line-height:1.4;font-weight:600;color:var(--green);margin:18px 0 16px;text-wrap:balance;}
+  .opt{display:block;width:100%;text-align:right;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px 16px;margin-top:10px;min-height:56px;font-size:18px;}
+  .opt.on{border-color:var(--green);background:var(--green-soft);font-weight:500;}
+  .score{font-size:64px;font-weight:600;color:var(--green);text-align:center;margin:10px 0 0;line-height:1;}
+  .verdict{text-align:center;font-size:20px;font-weight:600;margin:6px 0 14px;}
+  .verdict.pass{color:var(--ok);} .verdict.fail{color:#a8300f;}
+  .sent{background:var(--gold-soft);border-radius:14px;padding:10px 14px;font-size:15px;margin:10px 0;}
+  .wrong{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-top:10px;}
+  .wrong b{display:block;margin-bottom:6px;font-weight:500;}
+  .wrong .bad{color:#a8300f;} .wrong .good{color:var(--ok);}
+  :focus-visible{outline:3px solid var(--accent);outline-offset:2px;}
+</style>
+</head>
+<body>
+<header class="top"><img src="../roberta-logo-white.svg" alt="רוברטה וינצ'י"><span class="sub">מבחן תפריט</span></header>
+<main>
+  <section id="sStart">
+    <h1>מבחן תפריט</h1>
+    <p class="muted">20 שאלות על המנות, האלרגנים, השינויים והמחירים. בלי זמן. התשובות נבדקות בסוף, והתוצאה נשלחת למנהל המטבח.</p>
+    <label for="code" class="muted">הקוד האישי שלך</label>
+    <input class="field" id="code" inputmode="numeric" autocomplete="off" maxlength="12" aria-describedby="startErr">
+    <div class="err" id="startErr" role="alert"></div>
+    <button class="btn" id="go">התחל מבחן</button>
+    <p class="muted" id="practiceNote" hidden>מצב תרגול: בלי קוד ובלי שליחת תוצאה.</p>
+  </section>
+  <section id="sQ" hidden>
+    <div class="count" id="count"></div>
+    <div class="bar"><i id="barFill"></i></div>
+    <div class="q" id="qText"></div>
+    <div id="opts"></div>
+    <button class="btn" id="next" disabled>הבא</button>
+  </section>
+  <section id="sEnd" hidden>
+    <div class="score" id="pct"></div>
+    <div class="verdict" id="verdict"></div>
+    <div class="sent" id="sent"></div>
+    <button class="btn ghost" id="retry" hidden>נסה לשלוח שוב</button>
+    <div id="wrongList"></div>
+    <button class="btn" id="again">מבחן חדש</button>
+    <p class="muted"><a href="index.html">חזרה לתפריט</a></p>
+  </section>
+</main>
+<script src="menu-lib.js"></script>
+<script src="quiz-lib.js"></script>
+<script src="quiz.js"></script>
+</body>
+</html>
