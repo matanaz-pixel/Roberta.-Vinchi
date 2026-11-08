@@ -70,7 +70,8 @@
       if (opts.vegan && !it.vegan) return false;
       for (const k of opts.avoid || []) {
         const s = status(it, k);
-        if (s === 'has') return false;
+        // מנה שלא סומנה לגלוטן/לקטוז לא נחשבת בטוחה: בסינון אלרגנים היא לא מוצגת
+        if (s === 'has' || s === 'unknown') return false;
       }
       return true;
     });

@@ -68,6 +68,7 @@
       const s = L.status(it, k);
       if (s === 'has') out.push('<span class="tag has">' + L.ALLERGEN_LABEL[k] + '</span>');
       else if (s === 'option') out.push('<span class="tag opt">' + L.ALLERGEN_LABEL[k] + ' (אפשר בלי)</span>');
+      else if (s === 'unknown') out.push('<span class="tag unk">' + L.ALLERGEN_LABEL[k] + ' לא סומן</span>');
     });
     return out.join('');
   }
@@ -131,6 +132,7 @@
       if (s === 'has') al.push('<span class="tag has big">' + a.label + '</span>');
       else if (s === 'option') al.push('<span class="tag opt big">' + a.label + ' (אפשר בלי)</span>');
       else if (s === 'free' && (a.key === 'gluten' || a.key === 'lactose')) al.push('<span class="tag ok big">בלי ' + a.label + '</span>');
+      else if (s === 'unknown') al.push('<span class="tag unk big">' + a.label + ' לא סומן, לשאול את המטבח</span>');
     });
     if (it.vegan) al.unshift('<span class="tag vegan big">טבעוני</span>');
     const notes = (it.notes || []).map(n => '<li>' + escf(n) + '</li>').join('');

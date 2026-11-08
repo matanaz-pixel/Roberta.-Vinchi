@@ -73,6 +73,12 @@ test('filterItems: קטגוריה, חיפוש, הסתרה וסינון אלרג�
   assert.strictEqual(L.filterItems(items, { includeHidden: true }).length, 4);
 });
 
+test('filterItems: מנה שלא סומנה לגלוטן/לקטוז לא מוצגת בסינון אלרגנים (בטיחות)', () => {
+  const items = [item({ id: '1', gluten: 'no', lactose: 'no' }), item({ id: '2', gluten: 'unknown', lactose: 'no' })];
+  assert.deepStrictEqual(L.filterItems(items, { avoid: ['gluten'] }).map(i => i.id), ['1']);
+  assert.deepStrictEqual(L.filterItems(items, {}).map(i => i.id), ['1', '2']);
+});
+
 test('moveItem: הזזה בתוך קטגוריה בלבד ושמירה על רצף', () => {
   const items = [item({ id: '1', order: 1 }), item({ id: '2', order: 2 }), item({ id: '3', order: 3 }), item({ id: 'z', cat: 'b', order: 1 })];
   const r = L.moveItem(items, '3', -1);
