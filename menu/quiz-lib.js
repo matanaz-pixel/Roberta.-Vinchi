@@ -8,6 +8,7 @@
   const COUNT = 20;       // מספר שאלות
   const PASS = 70;        // ציון עובר באחוזים
 
+  let MENU = null;   // התפריט שממנו נבנית השאלה (לשמות קטגוריות)
   function rng(seed) {    // mulberry32
     let a = seed >>> 0;
     return function () {
@@ -48,13 +49,6 @@
 
   // כל מחולל מקבל (items, r, used) ומחזיר שאלה או null. used מונע שתי שאלות על אותה מנה באותו סוג
   const GEN = {
-    priceFar(items, r, used) {   // קל: מסיחי מחיר רחוקים
-      const it = pick(items.filter(x => !used.has('p' + x.id)), r); if (!it) return null;
-      const far = [...new Set(items.map(x => Number(x.price)))].filter(p => Math.abs(p - it.price) >= 10);
-      if (far.length < 3) return null;
-      used.add('p' + it.id);
-      return build('price', false, 'כמה עולה "' + it.name + '"?', it.price + ' ₪', sample(far, 3, r).map(p => p + ' ₪'), r);
-    },
     vegan(items, r) {
       const v = items.filter(x => x.vegan), nv = items.filter(x => !x.vegan); if (!v.length || nv.length < 3) return null;
       return build('vegan', false, 'איזו מהמנות טבעונית?', pick(v, r).name, sample(nv, 3, r).map(x => x.name), r);
@@ -69,24 +63,27 @@
       if (a.length < 1 || b.length < 3) return null;
       return build('lactose', false, 'איזו מהמנות מכילה לקטוז?', pick(a, r).name, sample(b, 3, r).map(x => x.name), r);
     },
-    // קשה: מסיחי מחיר קרובים
-    priceNear(items, r, used) {
-      const it = pick(items.filter(x => !used.has('n' + x.id)), r); if (!it) return null;
-      const near = [...new Set(items.map(x => Number(x.price)))].filter(p => p !== it.price && Math.abs(p - it.price) <= 8);
-      if (near.length < 3) return null;
-      used.add('n' + it.id);
-      return build('priceNear', true, 'כמה עולה "' + it.name + '"?', it.price + ' ₪', sample(near, 3, r).map(p => p + ' ₪'), r);
+    glutenHas(items, r) {
+      const a = items.filter(x => L.status(x, 'gluten') === 'has'), b = items.filter(x => L.status(x, 'gluten') === 'free');
+      if (!a.length || b.length < 3) return null;
+      return build('glutenHas', false, 'איזו מהמנות מכילה גלוטן?', pick(a, r).name, sample(b, 3, r).map(x => x.name), r);
     },
-    cheaper(items, r, used) {
-      for (let k = 0; k < 20; k++) {
-        const a = pick(items, r), cand = items.filter(x => x.id !== a.id && Math.abs(x.price - a.price) <= 6 && x.price !== a.price);
-        if (!cand.length || used.has('c' + a.id)) continue;
-        const b = pick(cand, r); used.add('c' + a.id);
-        const hi = a.price > b.price ? a : b, lo = hi === a ? b : a;
-        return build('compare', true, 'איזו מהשתיים יקרה יותר?', hi.name, [lo.name], r);
-      }
-      return null;
+    lactoseFree(items, r) {
+      const a = items.filter(x => L.status(x, 'lactose') === 'free'), b = items.filter(x => L.status(x, 'lactose') === 'has');
+      if (!a.length || b.length < 3) return null;
+      return build('lactoseFree', false, 'איזו מהמנות לא מכילה לקטוז?', pick(a, r).name, sample(b, 3, r).map(x => x.name), r);
     },
+    category(items, r, used) {
+      const cats = [...new Set(items.map(x => x.cat))];
+      const it = pick(items.filter(x => !used.has('k' + x.id)), r); if (!it || cats.length < 4) return null;
+      const name = c => (L.normalizeMenu(MENU).categories.find(k => k.id === c) || {}).name;
+      used.add('k' + it.id);
+      const right = name(it.cat); if (!right) return null;
+      const wrong = sample(cats.filter(c => c !== it.cat), 3, r).map(name).filter(Boolean);
+      if (wrong.length < 3) return null;
+      return build('category', false, 'באיזו קטגוריה בתפריט נמצאת "' + it.name + '"?', right, wrong, r);
+    },
+    // (שאלות מחיר הוסרו לבקשת המנהל)
     optionGluten(items, r) { return optionQ(items, r, 'gluten', 'גלוטן'); },
     optionLactose(items, r) { return optionQ(items, r, 'lactose', 'לקטוז'); },
     glutenStatus(items, r, used) { return statusQ(items, r, used, 'gluten', 'גלוטן', GLUTEN_LABELS); },
@@ -123,20 +120,21 @@
     return build('status_' + key, true, 'מה נכון לגבי ' + word + ' במנה "' + it.name + '"?', ans, labels.filter(l => l !== ans), r);
   }
 
-  const EASY = ['priceFar', 'vegan', 'glutenFree', 'lactoseHas'];
-  const HARD = ['priceNear', 'cheaper', 'optionGluten', 'optionLactose', 'glutenStatus', 'lactoseStatus', 'mods', 'noChanges', 'pregnancy'];
+  const EASY = ['vegan', 'glutenFree', 'glutenHas', 'lactoseHas', 'lactoseFree', 'category'];
+  const HARD = ['optionGluten', 'optionLactose', 'glutenStatus', 'lactoseStatus', 'mods', 'noChanges', 'pregnancy'];
 
   // חלק השאלות הקשות לפי רמת הקושי: ברמה 70 בערך שני שליש
   function hardShare(level) { return Math.max(0.1, Math.min(0.9, (level - 25) / 65)); }
 
   function generate(menu, opts) {
     opts = opts || {};
+    MENU = menu;
     const m = L.normalizeMenu(menu);
-    const items = m.items.filter(x => x.visible !== false && x.price !== '' && isFinite(Number(x.price))).map(x => Object.assign({}, x, { price: Number(x.price) }));
+    const items = m.items.filter(x => x.visible !== false);
     const r = rng(opts.seed != null ? opts.seed : Math.floor(Math.random() * 4294967296));
     const n = opts.count || COUNT, share = hardShare(opts.level || LEVEL);
     const used = new Set(), out = [], seenQ = new Set(), perKind = {};
-    const CAP = { price: 5, priceNear: 3, pregnancy: 1, noMods: 1 };
+    const CAP = { pregnancy: 1, noMods: 1, mods: 4, category: 2 };
     let guard = 0;
     while (out.length < n && guard++ < n * 40) {
       const pool = r() < share ? HARD : EASY;
@@ -166,7 +164,7 @@
   // טביעת אצבע של התוכן שהשאלות נשענות עליו. אם התפריט משתנה, הגרסאות שאושרו כבר לא בהכרח נכונות
   function menuHash(menu) {
     const m = L.normalizeMenu(menu);
-    const str = JSON.stringify(m.items.filter(x => x.visible !== false).sort((a, b) => String(a.id) < String(b.id) ? -1 : 1).map(x => [x.name, x.price, x.gluten, x.lactose, x.vegan, x.mods || '', x.glutenNote || '', x.lactoseNote || '', x.pregnancy || []]));
+    const str = JSON.stringify(m.items.filter(x => x.visible !== false).sort((a, b) => String(a.id) < String(b.id) ? -1 : 1).map(x => [x.name, x.gluten, x.lactose, x.vegan, x.mods || '', x.glutenNote || '', x.lactoseNote || '', x.pregnancy || []]));
     let h = 5381;
     for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0;
     return h.toString(36);

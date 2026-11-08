@@ -39,7 +39,6 @@ test('מבחן: תשובות נכונות מתאימות לנתוני התפרי
       if (q.kind === 'vegan') assert.ok(byName(ans).vegan);
       if (q.kind === 'gluten') assert.strictEqual(L.status(byName(ans), 'gluten'), 'free');
       if (q.kind === 'lactose') assert.strictEqual(L.status(byName(ans), 'lactose'), 'has');
-      if (q.kind === 'price') assert.strictEqual(ans, byName(q.q.slice(q.q.indexOf('"') + 1, q.q.lastIndexOf('"'))).price + ' ₪');
       if (q.kind === 'option_gluten') assert.strictEqual(L.status(byName(ans), 'gluten'), 'option');
     });
   }
@@ -92,9 +91,9 @@ test('גרסאות: החלפת שאלה נותנת שאלה אחרת, לא כפ�
   }
 });
 
-test('גרסאות: שינוי מחיר בתפריט משנה את טביעת האצבע, מנה מוסתרת גם', () => {
+test('גרסאות: שינוי סימון גלוטן בתפריט משנה את טביעת האצבע, מנה מוסתרת גם', () => {
   const h = Q.menuHash(menu);
-  const m2 = JSON.parse(JSON.stringify(menu)); m2.items[0].price = Number(m2.items[0].price) + 1;
+  const m2 = JSON.parse(JSON.stringify(menu)); m2.items[0].gluten = m2.items[0].gluten === 'yes' ? 'no' : 'yes';
   assert.notStrictEqual(Q.menuHash(m2), h);
   const m3 = JSON.parse(JSON.stringify(menu)); m3.items[0].visible = false;
   assert.notStrictEqual(Q.menuHash(m3), h);
@@ -103,5 +102,17 @@ test('גרסאות: שינוי מחיר בתפריט משנה את טביעת ה
 
 test('גרסאות: טביעת האצבע לא תלויה בסדר המנות בקובץ', () => {
   const m2 = JSON.parse(JSON.stringify(menu)); m2.items.reverse();
+  assert.strictEqual(Q.menuHash(m2), Q.menuHash(menu));
+});
+
+test('מבחן: אין שאלות על מחיר', () => {
+  for (let seed = 1; seed <= 200; seed++) Q.generate(menu, { seed }).forEach(q => {
+    assert.ok(!/₪|כמה עולה|יקרה|מחיר/.test(q.q + q.options.join(' ')), q.q);
+  });
+  Q.buildVersions(menu).versions.forEach(v => v.questions.forEach(q => assert.ok(!/₪|כמה עולה|יקרה|מחיר/.test(q.q + q.options.join(' ')))));
+});
+
+test('מבחן: שינוי מחיר בלבד לא משנה את טביעת האצבע (המבחן לא תלוי במחיר)', () => {
+  const m2 = JSON.parse(JSON.stringify(menu)); m2.items[0].price = Number(m2.items[0].price) + 5;
   assert.strictEqual(Q.menuHash(m2), Q.menuHash(menu));
 });
