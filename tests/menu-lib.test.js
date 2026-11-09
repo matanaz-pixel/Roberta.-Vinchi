@@ -15,7 +15,7 @@ test('נתוני ההתחלה תקינים: כל מנה עם שם, מחיר, ק�
     assert.ok(cats.has(it.cat), 'קטגוריה לא קיימת: ' + it.name);
     assert.ok(!ids.has(it.id), 'id כפול ' + it.id);
     ids.add(it.id);
-    if (it.image) assert.ok(fs.existsSync(__dirname + '/../menu/' + it.image), 'חסרה תמונה ' + it.image);
+    if (it.image && !/^data:image\//.test(it.image)) assert.ok(fs.existsSync(__dirname + '/../menu/' + it.image), 'חסרה תמונה ' + it.image);
   }
 });
 
