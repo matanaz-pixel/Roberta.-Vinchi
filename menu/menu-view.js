@@ -47,7 +47,6 @@
       if (s === 'has') out.push('<span class="tag has">' + a.label + '</span>');
       else if (s === 'option') out.push('<span class="tag opt">' + a.label + ' (אפשר בלי)</span>');
       else if (s === 'free' && (a.key === 'gluten' || a.key === 'lactose')) out.push('<span class="tag ok">בלי ' + a.label + '</span>');
-      else if (s === 'unknown') out.push('<span class="tag unk">' + a.label + ' לא סומן, לשאול את המטבח</span>');
     });
     return out.join('');
   }
