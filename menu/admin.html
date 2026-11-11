@@ -57,6 +57,7 @@
   .catrow{display:flex;gap:6px;align-items:center;margin-top:10px;}
   .catrow input{flex:1;min-width:0;min-height:46px;border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:#fff;}
   .catrow input.short{flex:0 0 28%;}
+  .catrow select{min-height:46px;border:1px solid var(--line);border-radius:12px;padding:6px 8px;background:#fff;}
   #addCat{margin-top:16px;}
 
   #edit{position:fixed;inset:0;z-index:20;background:rgba(2,20,4,.55);display:flex;align-items:flex-end;justify-content:center;}
@@ -109,10 +110,16 @@
     <div id="editScroll">
       <label class="fl" for="f_name">שם המנה</label><input class="field" id="f_name" maxlength="60">
       <div class="two">
-        <div><label class="fl" for="f_price">מחיר (₪)</label><input class="field" id="f_price" type="number" inputmode="numeric" min="0" max="9999"></div>
+        <div><label class="fl" for="f_price">מחיר (₪, בשתייה לא חובה)</label><input class="field" id="f_price" type="number" inputmode="numeric" min="0" max="9999"></div>
         <div><label class="fl" for="f_cat">קטגוריה</label><select class="field" id="f_cat"></select></div>
       </div>
       <label class="fl" for="f_desc">תיאור</label><textarea class="field" id="f_desc" maxlength="1200"></textarea>
+
+      <div id="drinkOnly">
+        <label class="fl" for="f_origin">יקב ומקור (ליין) / שורה קצרה מתחת לשם</label><input class="field" id="f_origin" maxlength="120">
+        <label class="fl" for="f_ingredients">מרכיבים (שורה לכל מרכיב)</label><textarea class="field" id="f_ingredients" maxlength="1200"></textarea>
+        <label class="fl" for="f_garnish">גרניש</label><input class="field" id="f_garnish" maxlength="200">
+      </div>
 
       <span class="fl">תמונה</span>
       <div class="imgrow">

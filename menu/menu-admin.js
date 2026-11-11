@@ -63,7 +63,7 @@
         const src = imgSrc(it.image);
         html += '<div class="item' + (it.visible === false ? ' hidden' : '') + '" data-id="' + escf(it.id) + '">' +
           '<span class="thumb">' + (src ? '<img alt="" src="' + escf(src) + '">' : '') + '</span>' +
-          '<button class="main" data-edit="' + escf(it.id) + '"><b>' + escf(it.name) + '</b><span>' + escf(it.price) + ' ₪' + (it.visible === false ? ' · מוסתרת' : '') + '</span></button>' +
+          '<button class="main" data-edit="' + escf(it.id) + '"><b>' + escf(it.name) + '</b><span>' + (it.price === '' || it.price == null ? '' : escf(it.price) + ' ₪') + (it.visible === false ? (it.price === '' || it.price == null ? 'מוסתרת' : ' · מוסתרת') : '') + '</span></button>' +
           '<span class="ctl">' +
           '<button class="ic" data-up="' + escf(it.id) + '" aria-label="הזז למעלה"' + (idx === 0 ? ' disabled' : '') + '>▲</button>' +
           '<button class="ic" data-down="' + escf(it.id) + '" aria-label="הזז למטה"' + (idx === its.length - 1 ? ' disabled' : '') + '>▼</button>' +
@@ -79,6 +79,7 @@
     $('#paneCats').innerHTML = cats.map((c, i) =>
       '<div class="catrow"><input data-catname="' + escf(c.id) + '" value="' + escf(c.name) + '" aria-label="שם קטגוריה">' +
       '<input data-catshort="' + escf(c.id) + '" value="' + escf(c.short || c.name) + '" aria-label="שם קצר" class="short">' +
+      '<select data-cattab="' + escf(c.id) + '" aria-label="באיזה טאב"><option value="food"' + (c.tab === 'drinks' ? '' : ' selected') + '>מנות</option><option value="drinks"' + (c.tab === 'drinks' ? ' selected' : '') + '>שתייה</option></select>' +
       '<button class="ic" data-catup="' + escf(c.id) + '"' + (i === 0 ? ' disabled' : '') + '>▲</button>' +
       '<button class="ic" data-catdown="' + escf(c.id) + '"' + (i === cats.length - 1 ? ' disabled' : '') + '>▼</button>' +
       '<button class="ic" data-catdel="' + escf(c.id) + '" aria-label="מחיקה">🗑</button></div>').join('') +
@@ -92,11 +93,13 @@
     let it = S.items.find(x => x.id === id);
     const isNew = !it;
     if (isNew) {
-      it = { id: L.nextId(S.items), cat: catForNew || (S.cats[0] && S.cats[0].id), name: '', price: '', desc: '', gluten: 'unknown', lactose: 'unknown', vegan: false, glutenNote: '', lactoseNote: '', mods: '', notes: [], pregnancy: [], allergens: [], image: '', visible: true, order: 999 };
+      it = { id: L.nextId(S.items), cat: catForNew || (S.cats[0] && S.cats[0].id), name: '', price: '', desc: '', ingredients: [], garnish: '', origin: '', gluten: 'unknown', lactose: 'unknown', vegan: false, glutenNote: '', lactoseNote: '', mods: '', notes: [], pregnancy: [], allergens: [], image: '', visible: true, order: 999 };
     }
     S.editing = { id: it.id, isNew, image: it.image || '' };
     f('name').value = it.name; f('price').value = it.price; f('desc').value = it.desc || '';
     f('cat').innerHTML = S.cats.map(c => '<option value="' + escf(c.id) + '"' + (c.id === it.cat ? ' selected' : '') + '>' + escf(c.name) + '</option>').join('');
+    f('origin').value = it.origin || ''; f('ingredients').value = (it.ingredients || []).join('\n'); f('garnish').value = it.garnish || '';
+    $('#drinkOnly').hidden = !L.isDrinkCat(S.cats.find(c => c.id === it.cat));
     f('gluten').value = it.gluten; f('lactose').value = it.lactose;
     f('glutenNote').value = it.glutenNote || ''; f('lactoseNote').value = it.lactoseNote || '';
     f('vegan').checked = !!it.vegan; f('visible').checked = it.visible !== false;
@@ -127,11 +130,12 @@
       id: e.id, cat: f('cat').value, name: f('name').value.trim(), price: f('price').value.trim() === '' ? '' : Number(f('price').value),
       desc: f('desc').value.trim(), gluten: f('gluten').value, lactose: f('lactose').value,
       glutenNote: f('glutenNote').value.trim(), lactoseNote: f('lactoseNote').value.trim(),
+      origin: f('origin').value.trim(), ingredients: lines(f('ingredients').value), garnish: f('garnish').value.trim(),
       vegan: f('vegan').checked, visible: f('visible').checked, mods: f('mods').value.trim(),
       notes: lines(f('notes').value), pregnancy: lines(f('pregnancy').value), image: e.image,
       allergens: [].concat(it_gl(f('gluten').value, 'gluten'), it_gl(f('lactose').value, 'lactose'), [...document.querySelectorAll('#otherAl input:checked')].map(x => x.dataset.al))
     });
-    const errs = L.validateItem(it);
+    const errs = L.validateItem(it, S.cats);
     if (errs.length) { $('#editErr').textContent = errs.join(' · '); return; }
     if (e.isNew) { it.order = 999; S.items.push(it); }
     else if (old.cat !== it.cat) { it.order = 999; S.items = S.items.map(x => (x.id === it.id ? it : x)); }
@@ -163,7 +167,7 @@
 
   // ---------- הורדת הקובץ ----------
   function download() {
-    const bad = S.items.map(i => ({ i, e: L.validateItem(i) })).find(x => x.e.length);
+    const bad = S.items.map(i => ({ i, e: L.validateItem(i, S.cats) })).find(x => x.e.length);
     if (bad) { toast('יש מנה לא תקינה: ' + bad.i.name + ' (' + bad.e.join(', ') + ')', true); return; }
     const json = JSON.stringify(L.toExport(S.cats, S.items), null, 1);
     const a = document.createElement('a');
@@ -208,7 +212,12 @@
   document.addEventListener('input', e => {
     const t = e.target;
     if (t.dataset && t.dataset.catname) { S.cats = S.cats.map(c => (c.id === t.dataset.catname ? Object.assign({}, c, { name: t.value }) : c)); touch(); }
+    else if (t.dataset && t.dataset.cattab) { S.cats = S.cats.map(c => { if (c.id !== t.dataset.cattab) return c; const o = Object.assign({}, c); if (t.value === 'drinks') o.tab = 'drinks'; else delete o.tab; return o; }); touch(); }
     else if (t.dataset && t.dataset.catshort) { S.cats = S.cats.map(c => (c.id === t.dataset.catshort ? Object.assign({}, c, { short: t.value }) : c)); touch(); }
+  });
+  document.addEventListener('change', e => {
+    if (e.target.id === 'f_cat') $('#drinkOnly').hidden = !L.isDrinkCat(S.cats.find(c => c.id === e.target.value));
+    else if (e.target.dataset && e.target.dataset.cattab) e.target.dispatchEvent(new Event('input', { bubbles: true }));
   });
   $('#file').addEventListener('change', e => { handleFile(e.target.files[0]); e.target.value = ''; });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.editing) closeEdit(); });
