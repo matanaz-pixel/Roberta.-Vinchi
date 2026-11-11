@@ -1185,7 +1185,7 @@
    "notes": [],
    "pregnancy": [],
    "allergens": [],
-   "image": "",
+   "image": "img/drink_gintonic.webp",
    "visible": true,
    "id": "d49",
    "order": 1
@@ -1211,7 +1211,7 @@
    "notes": [],
    "pregnancy": [],
    "allergens": [],
-   "image": "",
+   "image": "img/drink_negroni.webp",
    "visible": true,
    "id": "d50",
    "order": 2
@@ -1262,7 +1262,7 @@
    "notes": [],
    "pregnancy": [],
    "allergens": [],
-   "image": "",
+   "image": "img/drink_aperol.webp",
    "visible": true,
    "id": "d52",
    "order": 4
@@ -1312,7 +1312,7 @@
    "notes": [],
    "pregnancy": [],
    "allergens": [],
-   "image": "",
+   "image": "img/drink_amaretto.webp",
    "visible": true,
    "id": "d54",
    "order": 6
@@ -1364,7 +1364,7 @@
    "notes": [],
    "pregnancy": [],
    "allergens": [],
-   "image": "",
+   "image": "img/drink_whisky.webp",
    "visible": true,
    "id": "d56",
    "order": 8
@@ -1419,7 +1419,7 @@
    "notes": [],
    "pregnancy": [],
    "allergens": [],
-   "image": "",
+   "image": "img/drink_bionda.webp",
    "visible": true,
    "id": "d58",
    "order": 10
