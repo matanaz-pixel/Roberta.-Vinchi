@@ -1237,7 +1237,7 @@
    "notes": [],
    "pregnancy": [],
    "allergens": [],
-   "image": "",
+   "image": "img/drink_sbagliato.webp",
    "visible": true,
    "id": "d51",
    "order": 17
@@ -1339,7 +1339,7 @@
    "notes": [],
    "pregnancy": [],
    "allergens": [],
-   "image": "",
+   "image": "img/drink_ouzo.webp",
    "visible": true,
    "id": "d55",
    "order": 21
@@ -1392,7 +1392,7 @@
    "notes": [],
    "pregnancy": [],
    "allergens": [],
-   "image": "",
+   "image": "img/drink_summer.webp",
    "visible": true,
    "id": "d57",
    "order": 23
