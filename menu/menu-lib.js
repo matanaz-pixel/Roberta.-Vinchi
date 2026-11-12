@@ -27,10 +27,11 @@
     const byOrder = (a, b) => (a.order || 0) - (b.order || 0);
     const categories = toList(raw.categories).map(c => Object.assign({}, c)).sort(byOrder);
     const items = toList(raw.items).map(it => {
-      const o = Object.assign({ visible: true, allergens: [], notes: [], pregnancy: [], vegan: false, gluten: 'unknown', lactose: 'unknown' }, it);
+      const o = Object.assign({ visible: true, allergens: [], notes: [], pregnancy: [], ingredients: [], vegan: false, gluten: 'unknown', lactose: 'unknown' }, it);
       o.allergens = toList(o.allergens);
       o.notes = toList(o.notes);
       o.pregnancy = toList(o.pregnancy);
+      o.ingredients = toList(o.ingredients);
       return o;
     }).sort(byOrder);
     return { categories, items };
@@ -119,11 +120,17 @@
     return 'd' + String(max + 1).padStart(2, '0');
   }
 
-  function validateItem(it) {
+  // קטגוריה בטאב "שתייה" (קוקטיילים, יין בכוסות)
+  function isDrinkCat(cat) { return !!cat && cat.tab === 'drinks'; }
+
+  // cats אופציונלי: בשתייה מחיר אינו חובה, אבל אם הוזן הוא חייב להיות תקין
+  function validateItem(it, cats) {
     const errs = [];
     if (!it.name || !String(it.name).trim()) errs.push('חסר שם למנה');
+    const drink = isDrinkCat((cats || []).find(c => c.id === it.cat));
+    const empty = it.price === '' || it.price == null;
     const p = Number(it.price);
-    if (it.price === '' || it.price == null || !isFinite(p) || p < 0 || p > 9999) errs.push('מחיר לא תקין');
+    if (!(drink && empty) && (empty || !isFinite(p) || p < 0 || p > 9999)) errs.push('מחיר לא תקין');
     if (!it.cat) errs.push('חסרה קטגוריה');
     return errs;
   }
@@ -132,10 +139,10 @@
   function toExport(categories, items) {
     return {
       version: 1,
-      categories: categories.slice().sort((a, b) => a.order - b.order).map((c, i) => ({ id: c.id, name: c.name, short: c.short || c.name, order: i + 1 })),
+      categories: categories.slice().sort((a, b) => a.order - b.order).map((c, i) => Object.assign({ id: c.id, name: c.name, short: c.short || c.name, order: i + 1 }, c.tab ? { tab: c.tab } : {})),
       items: items.slice().sort((a, b) => a.order - b.order).map(it => Object.assign({}, it))
     };
   }
 
-  return { ALLERGENS, ALLERGEN_LABEL, normalizeMenu, status, filterItems, moveItem, renumber, moveCategory, nextId, validateItem, toExport };
+  return { isDrinkCat, ALLERGENS, ALLERGEN_LABEL, normalizeMenu, status, filterItems, moveItem, renumber, moveCategory, nextId, validateItem, toExport };
 });

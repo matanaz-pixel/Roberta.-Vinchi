@@ -3,7 +3,7 @@
 (function () {
   const L = window.MenuLib;
   const $ = (s, r) => (r || document).querySelector(s);
-  const state = { menu: { categories: [], items: [] } };
+  const state = { menu: { categories: [], items: [] }, tab: 'food' };
 
   // הגנה מפני הזרקת HTML: כל טקסט מהקובץ עובר escape לפני שנכנס ל-innerHTML
   const escf = v => String(v == null ? '' : v).replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]));
@@ -53,14 +53,17 @@
   const blk = (title, html) => (html ? '<div class="blk"><h4>' + title + '</h4>' + html + '</div>' : '');
   const li = arr => (arr.length ? '<ul>' + arr.map(n => '<li>' + escf(n) + '</li>').join('') + '</ul>' : '');
 
-  function dishHtml(it) {
+  function dishHtml(it, drink) {
     const src = imgSrc(it.image);
     const gnotes = [it.glutenNote && 'גלוטן: ' + it.glutenNote, it.lactoseNote && 'לקטוז: ' + it.lactoseNote].filter(Boolean);
     return '<article class="dish" id="' + escf(it.id) + '">' +
-      (src ? '<img class="hero" loading="lazy" decoding="async" alt="" src="' + escf(src) + '">' : '<div class="noimg">אין תמונה</div>') +
-      '<div class="inner"><div class="row"><h3 class="name">' + escf(it.name) + '</h3><span class="price">' + escf(it.price) + ' ₪</span></div>' +
-      '<div class="tags">' + tags(it) + '</div>' +
+      (src ? '<img class="hero" loading="lazy" decoding="async" alt="" src="' + escf(src) + '">' : '<div class="noimg">' + (drink ? 'תמונה בקרוב' : 'אין תמונה') + '</div>') +
+      '<div class="inner"><div class="row"><h3 class="name">' + escf(it.name) + '</h3>' + (it.price === '' || it.price == null ? '' : '<span class="price">' + escf(it.price) + ' ₪</span>') + '</div>' +
+      (drink && it.origin ? '<div class="origin">' + escf(it.origin) + '</div>' : '') +
+      (drink ? '' : '<div class="tags">' + tags(it) + '</div>') +
       '<p class="desc">' + escf(it.desc) + '</p>' +
+      blk('מרכיבים', li(it.ingredients || [])) +
+      blk('גרניש', it.garnish ? '<p>' + escf(it.garnish) + '</p>' : '') +
       blk('הערות על אלרגנים', li(gnotes)) +
       blk('שינויים אפשריים', it.mods ? '<p>' + escf(it.mods) + '</p>' : '') +
       blk('היריון', li(it.pregnancy || [])) +
@@ -70,15 +73,17 @@
 
   function render() {
     const f = L.filterItems(state.menu.items, {});
-    const cats = state.menu.categories.filter(c => f.some(i => i.cat === c.id));
+    const drink = state.tab === 'drinks';
+    const cats = state.menu.categories.filter(c => L.isDrinkCat(c) === drink && f.some(i => i.cat === c.id));
+    document.querySelectorAll('#tabs button').forEach(b => { const on = b.dataset.tab === state.tab; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
     const list = $('#list');
     if (!f.length) {
       list.innerHTML = '<p class="empty">אין מנות להצגה.</p>';
     } else {
       list.innerHTML = cats.map(c =>
         '<section class="cat" id="cat-' + escf(c.id) + '"><h2 class="cat-title">' + escf(c.name) + '</h2>' +
-        f.filter(i => i.cat === c.id).map(dishHtml).join('') + '</section>').join('') +
-        '<p class="fine">אלרגנים מעבר לגלוטן ולקטוז זוהו לפי רשימת המרכיבים. בכל ספק, שאלו את המטבח.</p>';
+        f.filter(i => i.cat === c.id).map(i => dishHtml(i, drink)).join('') + '</section>').join('') +
+        (drink ? '' : '<p class="fine">אלרגנים מעבר לגלוטן ולקטוז זוהו לפי רשימת המרכיבים. בכל ספק, שאלו את המטבח.</p>');
     }
     $('#cats').innerHTML = cats.map(c => '<button class="chip" data-cat="' + escf(c.id) + '">' + escf(c.short || c.name) + '</button>').join('');
     markActive();
@@ -88,7 +93,7 @@
   function markActive() {
     const secs = [...document.querySelectorAll('section.cat')];
     let cur = secs[0];
-    secs.forEach(s => { if (s.getBoundingClientRect().top <= 140) cur = s; });
+    secs.forEach(s => { if (s.getBoundingClientRect().top <= 190) cur = s; });
     document.querySelectorAll('#cats .chip').forEach(b => {
       const on = !!cur && b.dataset.cat === cur.id.slice(4);
       const was = b.classList.contains('on');
@@ -105,12 +110,14 @@
   document.addEventListener('click', e => {
     const t = e.target.closest('button');
     if (!t) return;
-    if (t.dataset.cat) { const s = document.getElementById('cat-' + t.dataset.cat); if (s) s.scrollIntoView({ block: 'start' }); }
+    if (t.dataset.tab) { state.tab = t.dataset.tab; render(); window.scrollTo({ top: 0 }); try { sessionStorage.setItem('menu_tab', state.tab); } catch (e) {} }
+    else if (t.dataset.cat) { const s = document.getElementById('cat-' + t.dataset.cat); if (s) s.scrollIntoView({ block: 'start' }); }
     else if (t.id === 'top') window.scrollTo({ top: 0 });
   });
 
   // בתצוגה מקדימה, כל שינוי בדף העריכה מתעדכן כאן מיד
   if (PREVIEW) window.addEventListener('storage', e => { if (e.key === 'menu_draft_v1' && draft()) setMenu(draft()); });
   if (!PREVIEW && 'serviceWorker' in navigator) navigator.serviceWorker.register('menu-sw.js').catch(() => {});
+  try { if (sessionStorage.getItem('menu_tab') === 'drinks') state.tab = 'drinks'; } catch (e) {}
   load();
 })();

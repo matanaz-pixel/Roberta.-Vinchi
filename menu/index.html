@@ -22,7 +22,7 @@
     --accent-soft:#fde8e2; --gold-soft:#f4ecd6;
   }
   *{box-sizing:border-box;}
-  html{scroll-behavior:smooth;scroll-padding-top:112px;}
+  html{scroll-behavior:smooth;scroll-padding-top:160px;}
   html,body{margin:0;background:var(--cream);color:var(--text);font-family:'Rubik',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;}
   button,input{font-family:inherit;font-size:16px;color:inherit;}
   button{cursor:pointer;}
@@ -37,6 +37,10 @@
   header.top img{height:24px;width:auto;}
   header.top .sub{font-size:13px;letter-spacing:.16em;color:#cfe0cf;flex:1;}
 
+  #tabs{display:flex;gap:6px;padding:8px 10px 0;}
+  #tabs button{flex:1;min-height:44px;border:1px solid var(--green);background:transparent;color:var(--green);border-radius:999px;font-weight:500;}
+  #tabs button.on{background:var(--green);color:#fff;}
+  .origin{color:var(--text-dim);font-size:14px;margin-top:4px;}
   .sticky{position:sticky;top:0;z-index:5;background:var(--tint);box-shadow:0 1px 0 var(--line);}
   .rowbar{display:flex;gap:6px;align-items:center;padding:8px 10px;}
   #cats{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0;}
@@ -77,6 +81,7 @@
     <span class="sub">ספר מנות</span>
   </header>
   <div class="sticky">
+    <div id="tabs" role="tablist"><button role="tab" data-tab="food" class="on">מנות</button><button role="tab" data-tab="drinks">שתייה</button></div>
     <div class="rowbar">
       <div id="cats" aria-label="קפיצה לקטגוריה"></div>
     </div>

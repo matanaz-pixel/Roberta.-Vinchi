@@ -11,7 +11,7 @@ test('נתוני ההתחלה תקינים: כל מנה עם שם, מחיר, ק�
   const ids = new Set();
   assert.ok(seed.items.length >= 40);
   for (const it of seed.items) {
-    assert.deepStrictEqual(L.validateItem(it), [], it.name);
+    assert.deepStrictEqual(L.validateItem(it, seed.categories), [], it.name);
     assert.ok(cats.has(it.cat), 'קטגוריה לא קיימת: ' + it.name);
     assert.ok(!ids.has(it.id), 'id כפול ' + it.id);
     ids.add(it.id);
@@ -29,7 +29,8 @@ test('נתוני ההתחלה: אין שאריות XML או תווי בקרה ב
 });
 
 test('נתוני ההתחלה: לכל מנה בקובץ יש סימון גלוטן ולקטוז, חוץ מצלחת חריפים ומנסף טלה (לא סומנו במסמך)', () => {
-  const missing = seed.items.filter(i => i.gluten === 'unknown' || i.lactose === 'unknown').map(i => i.name);
+  const drinkCats = new Set(seed.categories.filter(c => c.tab === 'drinks').map(c => c.id));
+  const missing = seed.items.filter(i => !drinkCats.has(i.cat)).filter(i => i.gluten === 'unknown' || i.lactose === 'unknown').map(i => i.name);
   assert.deepStrictEqual(missing, ['צלחת חריפים', '"מנסף" טלה']);
 });
 
