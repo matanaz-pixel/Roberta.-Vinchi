@@ -28,10 +28,10 @@ test('נתוני ההתחלה: אין שאריות XML או תווי בקרה ב
   }
 });
 
-test('נתוני ההתחלה: לכל מנה בקובץ יש סימון גלוטן ולקטוז, חוץ מצלחת חריפים ומנסף טלה (לא סומנו במסמך)', () => {
+test('נתוני ההתחלה: לכל מנה בקובץ יש סימון גלוטן ולקטוז, חוץ ממנסף טלה (לא סומן במסמך)', () => {
   const drinkCats = new Set(seed.categories.filter(c => c.tab === 'drinks').map(c => c.id));
   const missing = seed.items.filter(i => !drinkCats.has(i.cat)).filter(i => i.gluten === 'unknown' || i.lactose === 'unknown').map(i => i.name);
-  assert.deepStrictEqual(missing, ['צלחת חריפים', '"מנסף" טלה']);
+  assert.deepStrictEqual(missing, ['"מנסף" טלה']);
 });
 
 test('normalizeMenu ממיין מערכים (וגם אובייקטים) לפי order', () => {
