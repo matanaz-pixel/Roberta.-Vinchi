@@ -32,6 +32,9 @@
   .bar .ttl{font-weight:600;flex:1;}
   .bar a,.bar button{color:#fff;}
   .bar .link{background:none;border:1px solid rgba(255,255,255,.4);border-radius:999px;min-height:40px;padding:6px 14px;font-size:14px;text-decoration:none;display:inline-flex;align-items:center;}
+  #sendPR{background:var(--green);color:#fff;border:none;border-radius:999px;min-height:44px;padding:8px 20px;font-weight:600;}
+  #prLink{display:block;margin-top:8px;font-weight:500;}
+  #sendPR:disabled{opacity:.5;}
   #download{background:var(--accent);color:#fff;border:none;border-radius:999px;min-height:44px;padding:8px 20px;font-weight:600;}
   #howto{background:var(--gold-soft);border-radius:14px;padding:12px 16px;margin:12px 0;color:#5f5024;line-height:1.55;font-size:15px;}
   #draftNote{display:block;margin-top:6px;}
@@ -93,10 +96,12 @@
     <span class="ttl">עריכת מנות</span>
     <a class="link" href="guide.html" target="_blank" rel="noopener">מדריך</a>
     <a class="link" href="index.html?preview" target="_blank" rel="noopener">תצוגה מקדימה</a>
+    <button id="sendPR">שלח לאישור</button>
     <button id="download">הורד קובץ</button>
   </div>
   <div class="wrap">
-    <div id="howto">השינויים נשמרים כאן בדפדפן בלבד. כשסיימת, לחץ "הורד קובץ" והחלף את <b>menu/menu-data.json</b> באתר. עד אז המלצרים רואים את התפריט הקודם.
+    <div id="howto">השינויים נשמרים כאן בדפדפן בלבד. כשסיימת, לחץ "שלח לאישור": נפתחת בקשה בגיטהאב וכשממזגים אותה האתר מתעדכן. (אפשר גם "הורד קובץ" והחלפה ידנית של <b>menu/menu-data.json</b>.) עד אז המלצרים רואים את התפריט הקודם.
+      <span id="prLink" hidden></span>
       <span id="draftNote" hidden>יש כאן טיוטה שלא הורדה. <button id="resetDraft" type="button">זרוק טיוטה</button></span></div>
     <div class="tabs"><button id="tabItems" class="on">מנות</button><button id="tabCats">קטגוריות</button></div>
     <div id="paneItems"></div>
