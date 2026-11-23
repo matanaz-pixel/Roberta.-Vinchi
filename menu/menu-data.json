@@ -1155,6 +1155,8 @@
   {
    "visible": true,
    "allergens": [
+    "gluten",
+    "lactose",
     "nuts"
    ],
    "notes": [],
@@ -1165,8 +1167,8 @@
     "סומאק"
    ],
    "vegan": false,
-   "gluten": "unknown",
-   "lactose": "unknown",
+   "gluten": "yes",
+   "lactose": "yes",
    "cat": "pasta",
    "name": "\"מנסף\" טלה",
    "price": 98,
