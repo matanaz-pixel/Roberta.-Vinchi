@@ -5,6 +5,7 @@
   const $ = (s, r) => (r || document).querySelector(s);
   const escf = v => String(v == null ? '' : v).replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]));
   const DRAFT = 'menu_draft_v1';
+  const DRAFT_BASE = 'menu_draft_v1_base';
   const S = { cats: [], items: [], draft: false, tab: 'items', editing: null };
 
   function imgSrc(p) {
@@ -23,25 +24,41 @@
   // כל שינוי נשמר מיד כטיוטה בדפדפן
   function touch() {
     S.draft = true;
-    try { localStorage.setItem(DRAFT, JSON.stringify(L.toExport(S.cats, S.items))); $('#draftNote').hidden = false; }
+    try { localStorage.setItem(DRAFT, JSON.stringify(L.toExport(S.cats, S.items))); if (S.base) localStorage.setItem(DRAFT_BASE, S.base); $('#draftNote').hidden = false; }
     catch (e) { toast('אין מקום לשמור טיוטה בדפדפן. הורד קובץ עכשיו.', true); }
   }
 
   // ---------- טעינה ----------
+  // ברירת המחדל היא תמיד הספר הנוכחי שבאתר. טיוטה מהדפדפן נטענת רק אם נוצרה על הגרסה הנוכחית של הקובץ.
+  // אם הקובץ באתר השתנה מאז, הטיוטה הישנה לא נמחקת: היא עוברת לגיבוי בדפדפן (menu_draft_v1_backup).
+  function hashText(t) { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return String(h); }
+  function readDraft() { try { return JSON.parse(localStorage.getItem(DRAFT) || 'null'); } catch (e) { return null; } }
+  function useDraft(d) {
+    const m = L.normalizeMenu(d);
+    S.cats = m.categories; S.items = m.items; S.draft = true;
+    $('#draftNote').hidden = false;
+    render();
+  }
   function load() {
-    let d = null;
-    try { d = JSON.parse(localStorage.getItem(DRAFT) || 'null'); } catch (e) {}
-    if (d && d.items) {
-      const m = L.normalizeMenu(d);
-      S.cats = m.categories; S.items = m.items; S.draft = true;
-      $('#draftNote').hidden = false;
+    fetch('menu-data.json', { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }).then(txt => {
+      S.base = hashText(txt);
+      const d = readDraft();
+      let baseOk = false;
+      try { baseOk = localStorage.getItem(DRAFT_BASE) === S.base; } catch (e) {}
+      if (d && d.items && baseOk) { useDraft(d); return; }
+      if (d && d.items) {
+        try { localStorage.setItem(DRAFT + '_backup', JSON.stringify(d)); localStorage.removeItem(DRAFT); localStorage.removeItem(DRAFT_BASE); } catch (e) {}
+        toast('הספר באתר התעדכן, לכן נטען הספר הנוכחי. הטיוטה הישנה נשמרה בגיבוי בדפדפן.');
+      }
+      const m = L.normalizeMenu(JSON.parse(txt));
+      S.cats = m.categories; S.items = m.items; S.draft = false;
+      $('#draftNote').hidden = true;
       render();
-      return;
-    }
-    fetch('menu-data.json', { cache: 'no-cache' }).then(r => r.json()).then(seed => {
-      const m = L.normalizeMenu(seed);
-      S.cats = m.categories; S.items = m.items; render();
-    }).catch(err => toast('הטעינה נכשלה: ' + err.message, true));
+    }).catch(err => {
+      const d = readDraft();
+      if (d && d.items) { useDraft(d); toast('אין חיבור לאתר, נטענה הטיוטה מהדפדפן.', true); }
+      else toast('הטעינה נכשלה: ' + err.message, true);
+    });
   }
 
   // ---------- תצוגה ----------
@@ -179,7 +196,7 @@
   }
   function resetDraft() {
     if (!confirm('לזרוק את כל השינויים ולחזור לתפריט שבאתר?')) return;
-    try { localStorage.removeItem(DRAFT); } catch (e) {}
+    try { localStorage.removeItem(DRAFT); localStorage.removeItem(DRAFT_BASE); } catch (e) {}
     S.draft = false; $('#draftNote').hidden = true; load();
   }
 
