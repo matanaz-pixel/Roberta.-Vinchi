@@ -1084,7 +1084,7 @@
    "order": 4
   },
   {
-   "visible": true,
+   "visible": false,
    "allergens": [
     "lactose"
    ],
@@ -1245,7 +1245,7 @@
    "order": 5
   },
   {
-   "visible": true,
+   "visible": false,
    "allergens": [
     "lactose"
    ],
@@ -1724,7 +1724,7 @@
    "order": 9
   },
   {
-   "visible": true,
+   "visible": false,
    "allergens": [
     "gluten",
     "lactose"
@@ -1816,7 +1816,7 @@
    "order": 10
   },
   {
-   "visible": true,
+   "visible": false,
    "allergens": [
     "gluten",
     "lactose"
@@ -1897,7 +1897,7 @@
    "order": 11
   },
   {
-   "visible": true,
+   "visible": false,
    "allergens": [
     "gluten",
     "lactose"
@@ -2044,7 +2044,7 @@
    "order": 15
   },
   {
-   "visible": true,
+   "visible": false,
    "allergens": [
     "gluten",
     "lactose"
@@ -2073,7 +2073,7 @@
    "order": 16
   },
   {
-   "visible": true,
+   "visible": false,
    "allergens": [
     "lactose"
    ],
@@ -2120,7 +2120,7 @@
    "order": 18
   },
   {
-   "visible": true,
+   "visible": false,
    "allergens": [
     "lactose"
    ],
