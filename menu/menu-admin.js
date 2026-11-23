@@ -194,6 +194,44 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     toast('הקובץ ירד. כדי שהמלצרים יראו את השינויים, החלף בו את menu/menu-data.json באתר.');
   }
+  // ---------- שליחה לאישור (PR בגיטהאב) ----------
+  // המפתח נשמר רק בדפדפן הזה (localStorage), לא בקוד ולא באתר. המלצרים לא רואים שינוי עד שממזגים את ה-PR.
+  const GH_REPO = 'matanaz-pixel/Roberta.-Vinchi', GH_KEY = 'menu_gh_token_v1';
+  async function sendPR() {
+    const bad = S.items.map(i => ({ i, e: L.validateItem(i, S.cats) })).find(x => x.e.length);
+    if (bad) { toast('יש מנה לא תקינה: ' + bad.i.name + ' (' + bad.e.join(', ') + ')', true); return; }
+    let token = '';
+    try { token = localStorage.getItem(GH_KEY) || ''; } catch (e) {}
+    if (!token) {
+      token = (prompt('הדבק מפתח גיטהאב (Fine-grained token, גישה רק לריפו Roberta.-Vinchi, הרשאות Contents ו-Pull requests: Read and write). הוא יישמר רק בדפדפן הזה.') || '').trim();
+      if (!token) return;
+      try { localStorage.setItem(GH_KEY, token); } catch (e) {}
+    }
+    const btn = $('#sendPR'); btn.disabled = true; btn.textContent = 'שולח...';
+    const api = async (path, opt) => {
+      const r = await fetch('https://api.github.com/repos/' + GH_REPO + path, Object.assign({ headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' } }, opt));
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { const er = new Error(j.message || r.status); er.status = r.status; throw er; }
+      return j;
+    };
+    try {
+      const json = JSON.stringify(L.toExport(S.cats, S.items), null, 1);
+      const ref = await api('/git/ref/heads/main');
+      const branch = 'menu-edit-' + new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
+      await api('/git/refs', { method: 'POST', body: JSON.stringify({ ref: 'refs/heads/' + branch, sha: ref.object.sha }) });
+      const cur = await api('/contents/menu/menu-data.json?ref=main');
+      await api('/contents/menu/menu-data.json', { method: 'PUT', body: JSON.stringify({ message: 'עדכון תפריט מהעורך', content: btoa(unescape(encodeURIComponent(json))), sha: cur.sha, branch }) });
+      const pr = await api('/pulls', { method: 'POST', body: JSON.stringify({ title: 'עדכון תפריט מהעורך', head: branch, base: 'main', body: 'נשלח מדף העריכה. מיזוג הבקשה מעדכן את הספר שרואים המלצרים.' }) });
+      $('#prLink').innerHTML = 'נשלח לאישור. <a href="' + escf(pr.html_url) + '" target="_blank" rel="noopener">פתח את הבקשה כדי למזג</a>';
+      $('#prLink').hidden = false;
+      toast('נשלח לאישור. כדי שהמלצרים יראו, ממזגים את הבקשה בגיטהאב.');
+    } catch (e) {
+      if (e.status === 401 || e.status === 403 || e.status === 404) { try { localStorage.removeItem(GH_KEY); } catch (x) {} toast('המפתח לא תקין או בלי הרשאה (' + e.message + '). נסה שוב והזן מפתח חדש.', true); }
+      else toast('השליחה נכשלה: ' + e.message, true);
+    }
+    btn.disabled = false; btn.textContent = 'שלח לאישור';
+  }
+
   function resetDraft() {
     if (!confirm('לזרוק את כל השינויים ולחזור לתפריט שבאתר?')) return;
     try { localStorage.removeItem(DRAFT); localStorage.removeItem(DRAFT_BASE); } catch (e) {}
@@ -218,6 +256,7 @@
     else if (t.id === 'tabItems') { S.tab = 'items'; render(); }
     else if (t.id === 'tabCats') { S.tab = 'cats'; render(); }
     else if (t.id === 'download') download();
+    else if (t.id === 'sendPR') sendPR();
     else if (t.id === 'resetDraft') resetDraft();
     else if (t.id === 'saveItem') saveEdit();
     else if (t.id === 'cancelItem') closeEdit();
