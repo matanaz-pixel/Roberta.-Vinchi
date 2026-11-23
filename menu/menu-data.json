@@ -136,7 +136,9 @@
    "mods": "ניתן להוסיף עליה את כל אחת מהתוספות הבאות: פטריות, זיתים, עגבניות שרי, תפו\"א, מוצרלה, פרמזן, ביצת עין = 12 ₪\nפפרוני, אנשובי 22 ₪",
    "image": "img/dec26-d15.webp",
    "id": "d15",
-   "order": 1
+   "order": 1,
+   "origin": "",
+   "garnish": ""
   },
   {
    "visible": true,
@@ -432,7 +434,9 @@
    "mods": "ניתן להוציא ללא שום, ללא ארוגולה.\nניתן להוסיף עליה את כל אחת מהתוספות הבאות: פטריות, זיתים, עגבניות שרי, תפו\"א, מוצרלה, פרמזן, ביצת עין = 12 ₪\nפפרוני, אנשובי 22 ₪",
    "image": "img/dec26-d16.webp",
    "id": "d16",
-   "order": 2
+   "order": 2,
+   "origin": "",
+   "garnish": ""
   },
   {
    "visible": true,
@@ -638,7 +642,7 @@
    "order": 2
   },
   {
-   "visible": true,
+   "visible": false,
    "allergens": [
     "lactose"
    ],
@@ -662,7 +666,7 @@
    "garnish": ""
   },
   {
-   "visible": true,
+   "visible": false,
    "allergens": [
     "gluten",
     "lactose"
@@ -715,7 +719,7 @@
    "order": 3
   },
   {
-   "visible": true,
+   "visible": false,
    "allergens": [
     "lactose"
    ],
@@ -968,7 +972,7 @@
    "order": 4
   },
   {
-   "visible": true,
+   "visible": false,
    "allergens": [
     "lactose",
     "nuts"
@@ -1088,7 +1092,7 @@
    "order": 4
   },
   {
-   "visible": false,
+   "visible": true,
    "allergens": [
     "lactose"
    ],
@@ -1150,7 +1154,7 @@
    "order": 5
   },
   {
-   "visible": true,
+   "visible": false,
    "allergens": [
     "gluten",
     "lactose"
@@ -1251,7 +1255,7 @@
    "order": 5
   },
   {
-   "visible": false,
+   "visible": true,
    "allergens": [
     "lactose"
    ],
@@ -1556,7 +1560,7 @@
    "order": 7
   },
   {
-   "visible": true,
+   "visible": false,
    "allergens": [
     "lactose"
    ],
@@ -1732,7 +1736,7 @@
    "garnish": ""
   },
   {
-   "visible": false,
+   "visible": true,
    "allergens": [
     "gluten",
     "lactose"
@@ -1824,7 +1828,7 @@
    "order": 10
   },
   {
-   "visible": false,
+   "visible": true,
    "allergens": [
     "gluten",
     "lactose"
@@ -1852,7 +1856,7 @@
    "order": 11
   },
   {
-   "visible": true,
+   "visible": false,
    "allergens": [
     "gluten",
     "lactose"
@@ -1905,7 +1909,7 @@
    "order": 11
   },
   {
-   "visible": false,
+   "visible": true,
    "allergens": [
     "gluten",
     "lactose"
@@ -1933,7 +1937,7 @@
    "order": 12
   },
   {
-   "visible": false,
+   "visible": true,
    "allergens": [],
    "notes": [],
    "pregnancy": [],
@@ -1948,7 +1952,7 @@
    "gluten": "no",
    "lactose": "no",
    "cat": "starters",
-   "name": "קרודו של חורף",
+   "name": "קרודו דג",
    "price": 78,
    "desc": "לפרואנים ולמקסיקנים יש סביצ'ה, ליפנים יש סשימי, לאיטלקים יש קרודו שפירושו \"נא\". קרודו יכול להיות במגוון צורות חיתוך שונות, אצלנו בתפריט הוא חתוך לקוביות קטנות.\nהקרודו מוגש על רוטב של הדרים שבשיא העונה כרגע, הוא מכיל- ליים, ברגמוט, מאייר (זן של לימון שהוא הכלאה בין לימון למנדרינה, בעל קליפה דקה ותוכן בעל צבע צהבהב כתמתם), חרדל, דבש ושמן זית. בדג עצמו יש שומר טרי פרוס דק, בצל סגול, עלים חריפים קצוצים ופלפל חריף טרי.",
    "glutenNote": "",
@@ -1956,7 +1960,9 @@
    "mods": "בלי פלפל חריף, בלי בצל",
    "image": "img/dec26-d12.webp",
    "id": "d12",
-   "order": 12
+   "order": 12,
+   "origin": "",
+   "garnish": ""
   },
   {
    "visible": true,
@@ -2023,7 +2029,7 @@
    "garnish": ""
   },
   {
-   "visible": false,
+   "visible": true,
    "allergens": [
     "lactose"
    ],
@@ -2052,7 +2058,7 @@
    "order": 15
   },
   {
-   "visible": false,
+   "visible": true,
    "allergens": [
     "gluten",
     "lactose"
@@ -2081,7 +2087,7 @@
    "order": 16
   },
   {
-   "visible": false,
+   "visible": true,
    "allergens": [
     "lactose"
    ],
@@ -2108,7 +2114,7 @@
    "order": 17
   },
   {
-   "visible": true,
+   "visible": false,
    "allergens": [],
    "notes": [],
    "pregnancy": [],
@@ -2128,7 +2134,7 @@
    "order": 18
   },
   {
-   "visible": false,
+   "visible": true,
    "allergens": [
     "lactose"
    ],
