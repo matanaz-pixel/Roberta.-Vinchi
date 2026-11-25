@@ -218,18 +218,6 @@
   .empty-note, .status{ text-align:center; color:var(--text-dim); font-size:14px; padding:26px 10px; border:1px dashed var(--line); border-radius:16px; }
   .status.error{ color:var(--accent); border-color:var(--accent); }
   /* מסך אישור מכשיר */
-  .locked .app, .locked .timers, .locked .to-top{ display:none !important; }
-  .gate{ max-width:560px; margin:0 auto; padding:22px 16px calc(40px + env(safe-area-inset-bottom)); }
-  .gate[hidden]{ display:none; }
-  .gate-box{ background:var(--card); border:1px solid var(--line); border-radius:20px; padding:22px 18px; display:flex; flex-direction:column; gap:14px; }
-  .gate h1{ font-size:22px; margin:0; color:var(--green); }
-  .gate p{ margin:0; font-size:15px; line-height:1.6; }
-  .gate input[type=text]{ border:1px solid var(--line); border-radius:12px; padding:12px 14px; font:inherit; font-size:17px; min-height:48px; background:#fff; color:var(--text); }
-  .gate input[type=text]:focus{ outline:none; border-color:var(--green); box-shadow:0 0 0 3px var(--green-soft); }
-  .gate .code{ font-size:30px; font-weight:600; letter-spacing:.25em; color:var(--green); text-align:center; direction:ltr; background:var(--green-soft); border-radius:14px; padding:10px; }
-  .gate button{ min-height:50px; border-radius:999px; border:1px solid var(--green); font:inherit; font-size:16px; font-weight:500; cursor:pointer; background:transparent; color:var(--green); }
-  .gate button.primary{ background:var(--green); color:#fff; }
-  .gate .hp{ position:absolute; inset-inline-start:-9999px; width:1px; height:1px; opacity:0; }
 
   /* ===== עיצוב מהודק (v2) ===== */
   :root{ --line:#e3dccb; --gold:#b8a06a; }
@@ -300,7 +288,6 @@
   <img src="./roberta-logo-white.svg" alt="Roberta Vinci">
   <div class="sub">ספר מתכונים</div>
 </header>
-<div class="gate" id="gate" hidden></div>
 <div class="app">
   <div class="sticky">
     <input class="search" id="search" type="search" placeholder="חיפוש מתכון, מצרך או הערה..." autocomplete="off" enterkeyhint="search">
@@ -316,21 +303,19 @@
 <script src="recipes-lib.js"></script>
 <script>
 const { NUM, scaleAll, parseCSV, lines, fmtNum, toNum, scaleLine, scaleYield, yieldText, parseMultiplier, parseTable, queryTokens, searchScore, splitQuantities, hasUnscaledQty, findTimes, fmtDur } = RB;
-// מקור המתכונים: טאב recipes בגיליון Google Sheets, דרך ה-Web App (apps-script/Code.gs) ורק למכשיר מאושר.
-// המתכונים לא נמצאים בריפו. אם אין חיבור: העותק האחרון שנשמר במכשיר (עד 14 יום).
-// הקריאה הישירה מהגיליון (gviz) נשארה רק לשרת ישן שלא מכיר את אישור המכשירים, ולא תעבוד כשהגיליון פרטי.
+// מקור המתכונים: טאב recipes בגיליון Google Sheets, דרך ה-Web App (apps-script/Code.gs). פתוח לכולם.
+// המתכונים לא נמצאים בריפו. אם אין חיבור: העותק האחרון שנשמר במכשיר, בלי הגבלת זמן, עם הודעה על תאריכו.
+// הקריאה הישירה מהגיליון (gviz) נשארה רק לשרת ישן, ולא תעבוד כשהגיליון פרטי.
 const USE_SHEET = true;
 const SHEET_ID = '1H3tzII7pSwy0KS3UyI1gCcPn9ipNpVwAh8Mg1AqiilM';
 const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&sheet=recipes`;
 const CURRENT_TAB = 'תפריט נוכחי';
 // כתובת ה-Web App של בקשות התיקון (Apps Script, ראו apps-script/Code.gs). ריק = הכפתור מוסתר.
 const CORRECTION_URL = 'https://script.google.com/macros/s/AKfycbyT2q5HDJJ77nzPrpd-FayB1Mq5piCG6kLpP9Kx1zq-h4dbEYZPtgNK5JYG4WXv9xSj/exec';
-// אישור מכשירים: הספר נטען דרך אותו Web App ורק מכשיר שאושר בטאב "מכשירים" מקבל מתכונים (ראו apps-script/Code.gs).
-// GATE_ON = false או CORRECTION_URL ריק: הספר נטען כמו קודם, ישירות מהגיליון.
-const GATE_ON = true;
+// הספר נטען דרך אותו Web App, פתוח לכולם (בלי אישור מכשיר), ועובד גם בלי אפליקציית המלאי (ראו apps-script/Code.gs).
+// CORRECTION_URL ריק: הספר נטען ישירות מהגיליון, וזה עובד רק כשהגיליון ציבורי.
 const ACCESS_URL = CORRECTION_URL;
-const OWNER_WA = '';    // מספר וואטסאפ של מי שמאשר, בפורמט 9725XXXXXXXX. ריק = המשתמש בוחר איש קשר בעצמו
-const DEVICE_KEY = 'rb-device-v1';
+const CLIENT_KEY = 'rb-client-v1';
 const CATEGORIES = ['פס קר', 'פס חם', 'טאבון', "צ'קר", 'קונדיטוריה'];
 
 // ---- מצב שנשמר במכשיר בלבד (לא משותף בין משתמשים) ----
@@ -418,121 +403,43 @@ function applyData(data, source, stamp, first){
   buildTabs(); renderRecent(); render(); refreshFooter();
   if(pendingNeed){ const n = pendingNeed; pendingNeed = 0; applyNeed(n); }
 }
-// ---- אישור מכשיר ----
-function deviceId(){
+// ---- טעינת המתכונים ----
+// ספר המתכונים פתוח לכולם: אין אישור מכשיר, והוא לא תלוי באפליקציית המלאי. המזהה למטה משמש רק להגבלת קצב של בקשות תיקון.
+function clientId(){
   try{
-    let v = localStorage.getItem(DEVICE_KEY);
+    let v = localStorage.getItem(CLIENT_KEY);
     if(RB.isDeviceId(v)) return v;
     v = RB.newDeviceId(crypto.getRandomValues(new Uint8Array(16)));
-    localStorage.setItem(DEVICE_KEY, v);
+    localStorage.setItem(CLIENT_KEY, v);
     return v;
   }catch(e){ return ''; }
 }
-// text: התשובה הגולמית (ריקה = אין חיבור). acc: התשובה המפוענחת, או null אם זה לא JSON של הפרוטוקול (שרת ישן).
-async function fetchAccess(){
-  const id = deviceId();
-  if(!id) return { acc: { status: 'nostorage' }, text: '' };
+// text: התשובה הגולמית (ריקה = אין חיבור). acc: התשובה המפוענחת, או null אם זה לא JSON של הפרוטוקול.
+async function fetchRecipes(){
   let text = '';
-  try{ text = await fetchText(`${ACCESS_URL}?a=data&d=${id}`, 12000); }catch(e){}
+  try{ text = await fetchText(`${ACCESS_URL}?a=recipes`, 12000); }catch(e){}
   return { acc: RB.parseAccess(text), text };
 }
-async function sendAccessRequest(name){
-  try{
-    const res = await fetch(ACCESS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ a: 'request', dev: deviceId(), name, website: document.getElementById('gate-hp')?.value || '' }) });
-    const text = (await res.text()).trim();
-    const acc = RB.parseAccess(text);
-    return acc ? { acc } : { err: text };
-  }catch(e){ return { err: 'network' }; }
-}
-const GATE_ERRORS = { network: 'אין חיבור לאינטרנט. נסו שוב.', busy: 'יש כרגע הרבה בקשות. נסו שוב בעוד כמה דקות.', invalid: 'כתבו את השם שלכם.', error: 'אירעה שגיאה. נסו שוב.' };
-let gateTimer = 0, gateStatus = '';
-
-function hideGate(){
-  clearInterval(gateTimer); gateTimer = 0; gateStatus = '';
-  document.body.classList.remove('locked');
-  document.getElementById('gate').hidden = true;
-}
-// מנקה מהמכשיר את העותק השמור ומציג את המסך. נקרא כשהשרת אומר שהמכשיר לא מאושר.
-function lockOut(acc){
-  try{ localStorage.removeItem(SHEET_CACHE_KEY); localStorage.removeItem(EXTRA_CACHE_KEY); }catch(e){}
-  recipes = [];
-  for(const id of ['list', 'tabs', 'recent']) document.getElementById(id)?.replaceChildren();   // גם מה שכבר צויר מהעותק השמור
-  showGate(acc);
-}
-async function recheckGate(){
-  if(gateStatus === 'unknown' || gateStatus === 'nostorage') return;
-  const { acc } = await fetchAccess();
-  if(acc && acc.status === 'ok'){ hideGate(); load(); }
-  else if(acc && acc.status !== gateStatus) showGate(acc);
-  else if(!acc && gateStatus !== 'offline') showGate({ status: 'offline' });
-}
-function showGate(acc){
-  const g = document.getElementById('gate');
-  document.body.classList.add('locked');
-  g.hidden = false;
-  clearInterval(gateTimer); gateTimer = 0;
-  gateStatus = acc.status;
-  const box = el('div', 'gate-box');
-  const msg = el('p'); msg.hidden = true; msg.setAttribute('role', 'alert'); msg.style.color = 'var(--accent)';
-  const err = t => { msg.textContent = t; msg.hidden = false; };
-  const btn = (label, cls, fn) => { const b = el('button', cls, label); b.type = 'button'; b.onclick = fn; return b; };
-  if(acc.status === 'unknown'){
-    box.append(el('h1', '', 'ספר המתכונים'), el('p', '', 'כדי לפתוח את הספר צריך אישור. כתבו את השם שלכם ולחצו על הבקשה, והיא תישלח למי שמאשר.'));
-    const name = el('input'); name.type = 'text'; name.maxLength = 60; name.placeholder = 'השם שלך'; name.autocomplete = 'name'; name.setAttribute('aria-label', 'השם שלך');
-    try{ name.value = localStorage.getItem('rb-sender') || ''; }catch(e){}
-    const hp = el('input', 'hp'); hp.type = 'text'; hp.id = 'gate-hp'; hp.tabIndex = -1; hp.autocomplete = 'off'; hp.setAttribute('aria-hidden', 'true');
-    const go = btn('בקש גישה', 'primary', async () => {
-      const n = name.value.trim();
-      if(!n){ err(GATE_ERRORS.invalid); name.focus(); return; }
-      go.disabled = true; go.textContent = 'שולח...'; msg.hidden = true;
-      const r = await sendAccessRequest(n);
-      go.disabled = false; go.textContent = 'בקש גישה';
-      if(r.acc){ try{ localStorage.setItem('rb-sender', n); }catch(e){} r.acc.status === 'ok' ? (hideGate(), load()) : showGate(r.acc); }
-      else err(GATE_ERRORS[r.err] || GATE_ERRORS.error);
-    });
-    name.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); go.click(); } });
-    box.append(name, hp, go, msg);
-  }else if(acc.status === 'pending'){
-    box.append(el('h1', '', 'הבקשה נשלחה'), el('p', '', (acc.name ? acc.name + ', ' : '') + 'ברגע שיאשרו אותך הספר ייפתח כאן לבד. אפשר להשאיר את הדף פתוח.'));
-    if(acc.code){ box.append(el('p', '', 'הקוד שלך (כדי שיזהו אותך):'), el('div', 'code', acc.code)); }
-    const wa = el('a'); wa.href = `https://wa.me/${OWNER_WA}?text=` + encodeURIComponent(`שלום, ביקשתי גישה לספר המתכונים.${acc.name ? ' שם: ' + acc.name + '.' : ''}${acc.code ? ' קוד: ' + acc.code : ''}`);
-    wa.target = '_blank'; wa.rel = 'noopener'; wa.textContent = 'שלח הודעה בוואטסאפ לזרז אישור';
-    wa.style.cssText = 'text-align:center;color:var(--green);font-size:15px;padding:10px;text-decoration:underline';
-    box.append(btn('בדוק עכשיו', 'primary', async e => { e.target.textContent = 'בודק...'; await recheckGate(); if(gateStatus === 'pending'){ e.target.textContent = 'עדיין לא אושר'; setTimeout(() => { e.target.textContent = 'בדוק עכשיו'; }, 2500); } }), wa);
-    gateTimer = setInterval(() => { if(document.visibilityState === 'visible') recheckGate(); }, 20000);
-  }else if(acc.status === 'blocked'){
-    box.append(el('h1', '', 'אין גישה'), el('p', '', 'הגישה לספר מהמכשיר הזה אינה פעילה. אם זו טעות, אפשר לפנות למי שמאשר.'), btn('בדוק שוב', 'primary', recheckGate));
-  }else if(acc.status === 'nostorage'){
-    box.append(el('h1', '', 'לא ניתן לשמור נתונים'), el('p', '', 'הדפדפן חוסם שמירה באתר (אולי גלישה פרטית). פתחו את הספר בחלון רגיל.'));
-  }else{
-    box.append(el('h1', '', 'אין חיבור'), el('p', '', 'כדי לאמת את המכשיר צריך להתחבר לאינטרנט. אחרי הכניסה הראשונה הספר עובד גם בלי קליטה.'), btn('נסה שוב', 'primary', recheckGate));
-  }
-  g.replaceChildren(box);
-}
-document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible' && gateStatus && gateStatus !== 'unknown') recheckGate(); });
 
 // מציג מיד את העותק השמור במכשיר (אם יש), ובינתיים מרענן ברקע
 async function load(){
   const list = document.getElementById('list');
-  const gated = GATE_ON && !!ACCESS_URL;
+  const viaServer = !!ACCESS_URL;
   let cache = null, extraCached = null;
   if(USE_SHEET){
     try{ const c = JSON.parse(localStorage.getItem(SHEET_CACHE_KEY)); const d = parseTable(c.t); if(d) cache = { t: c.t, ts: c.ts, data: d }; }catch(e){}
   }
-  if(gated && cache && !RB.cacheValid(cache.ts, now())) cache = null;       // עותק ישן מדי מוצג רק אחרי אימות מול השרת
   try{ extraCached = localStorage.getItem(EXTRA_CACHE_KEY); }catch(e){}
   let applied = false;
   if(cache){ applyData(mergeExtra(cache.data, extraCached), 'device', cache.ts, true); applied = true; restoreTimers(); }
 
   let acc = null, legacy = false;
-  if(gated){
-    const r = await fetchAccess();
-    acc = r.acc;
-    legacy = !acc && !!r.text;                                              // שרת ישן שלא מכיר את הפרוטוקול: טוענים כמו קודם
-    if(acc && acc.status !== 'ok'){ lockOut(acc); return; }
-    if(!acc && !legacy && !cache){ showGate({ status: 'offline' }); return; }
+  if(viaServer){
+    const r = await fetchRecipes();
+    acc = r.acc && r.acc.status === 'ok' ? r.acc : null;
+    legacy = !r.acc && !!r.text;                                            // שרת ישן שלא מכיר את הפרוטוקול: טוענים כמו קודם
   }
-  const direct = !gated || legacy;
+  const direct = !viaServer || legacy;
   const extraP = Promise.resolve(acc ? acc.extra || '' : '');
   let data = null, source = '', stamp = null, t = '';
   if(acc){
@@ -971,7 +878,6 @@ const FIX_REPLIES = {
   unknown: ['המתכון לא נמצא בגיליון (אולי שמו שונה). רעננו את הדף ונסו שוב', true],
   invalid: ['הבקשה לא תקינה', true],
   busy: ['יש כרגע הרבה בקשות. נסו שוב בעוד כמה דקות', true],
-  denied: ['המכשיר הזה לא מאושר לשליחת תיקונים. רעננו את הדף ובקשו אישור', true],
   error: ['אירעה שגיאה בשמירה', true]
 };
 const QTY_RE = new RegExp(String.raw`^((?:תפוקה:\s*)?(?:כ-|ל-|ל)?)((?:${NUM})(?:\s*-\s*(?:${NUM}))?|חצי|רבע|שליש)(?=\s|$)(.*)$`);
@@ -980,7 +886,7 @@ const splitQty = line => { const m = line.match(QTY_RE); return m ? { pre: m[1],
 
 async function postRequest(body){
   try{
-    const res = await fetch(CORRECTION_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ ...body, dev: deviceId() }) });
+    const res = await fetch(CORRECTION_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ ...body, dev: clientId() }) });
     return (await res.text()).trim();
   }catch(e){ return null; }
 }

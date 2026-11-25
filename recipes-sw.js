@@ -1,6 +1,6 @@
 // Service worker של ספר המתכונים בלבד (נפרד מזה של אפליקציית ההפסקות).
 // הדף נטען קודם מהרשת (עד 4 שניות) כדי שעדכונים יגיעו, ואם אין קליטה נטען מהמכשיר.
-const VERSION = 'book-v4';
+const VERSION = 'book-v5';
 const SHELL = ['./recipes.html', './recipes-lib.js', './recipes.webmanifest', './roberta-logo-white.svg', './roberta-logo.png', './roberta-icon-192.png'];
 
 self.addEventListener('install', e => {

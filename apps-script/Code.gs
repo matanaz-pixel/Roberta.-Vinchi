@@ -10,12 +10,15 @@
  *
  * חשוב: כל מי שיכול לערוך את הגיליון יכול גם לאשר בקשות ולאשר מכשירים. לא משתפים אותו לעריכה.
  *
- * אישור מכשירים (גישה לספר):
- * הספר נטען דרך הסקריפט הזה ולא ישירות מהגיליון, ולכן הגיליון אמור להיות פרטי (שיתוף: מוגבל). הסקריפט רץ בשמך, ולכן הוא יכול לקרוא אותו.
- * טבח שפותח את הספר בפעם הראשונה כותב את שמו ולוחץ "בקש גישה". נוספת שורה בטאב "מכשירים" (נוצר אוטומטית).
- * מסמנים וי בעמודת "מאושר" והספר נפתח אצלו. מסירים את הוי והמכשיר נחסם (בפעם הבאה שיש לו חיבור לשרת).
+ * ספר המתכונים פתוח לכולם, בלי אישור מכשיר. הוא נטען דרך הסקריפט הזה (doGet?a=recipes) ולא ישירות מהגיליון, ולכן הגיליון אמור להיות פרטי (שיתוף: מוגבל).
+ * הסקריפט רץ בשמך, ולכן הוא יכול לקרוא אותו. כל מי שיש לו את הקישור לספר רואה את המתכונים. בקשות תיקון פתוחות לכולם עם שם שולח, וממתינות לאישור שלך.
+ * מתכונים נוספים שלא בטאב recipes אפשר לשים בטאב "recipes-extra" (אותן עמודות).
+ *
+ * אישור מכשירים (אפליקציית המלאי בלבד):
+ * אפליקציית המלאי נפרדת לגמרי מהספר. מכשיר שפותח אותה בפעם הראשונה כותב את שמו ולוחץ "בקש גישה". נוספת שורה בטאב "מכשירי מלאי" (נוצר אוטומטית,
+ * ובפעם הראשונה מועתקים אליו המכשירים מהטאב הישן "מכשירים", שנשאר כמו שהוא ולא בשימוש).
+ * מסמנים וי בעמודת "מאושר" והמלאי נפתח אצלו. מסירים את הוי והמכשיר נחסם (בפעם הבאה שיש לו חיבור לשרת).
  * "קוד" הוא 4 תווים שהטבח רואה על המסך, כדי להבדיל בין שני טבחים עם אותו שם.
- * מתכונים נוספים שלא בטאב recipes אפשר לשים בטאב "recipes-extra" (אותן עמודות). הוא נשלח לטבחים מאושרים בלבד.
  *
  * הזרימה: הטבח בוחר מתכון ומשנה כמויות (שדה לכל מצרך) ו/או את הוראות ההכנה > האתר שולח בקשה (doPost) >
  * נוספת שורה בטאב "בקשות תיקון" בסטטוס "ממתין", עם עמודת "מה השתנה" (לפני/אחרי) >
@@ -32,7 +35,8 @@ const RATE_PER_SENDER = 10;       // בקשות לכל 10 דקות, לכל שם 
 const RATE_GLOBAL = 120;          // בקשות לכל 10 דקות, לכולם יחד (תקרת חירום נגד הצפה)
 const WINDOW_MS = 10 * 60 * 1000; // חלון קבוע: הספירה מתאפסת בתחילת כל חלון, ולא מתארכת עם כל בקשה
 const NOTIFY_OWNER = true;        // מייל לבעלים, לכל היותר פעם בשעה
-const DEVICES_SHEET = 'מכשירים';
+const DEVICES_SHEET = 'מכשירי מלאי';          // אישור מכשירים של אפליקציית המלאי בלבד. ספר המתכונים פתוח ולא משתמש בו
+const LEGACY_DEVICES_SHEET = 'מכשירים';       // הטאב הישן (היה משותף לספר ולמלאי). נשאר כמו שהוא, ובפעם הראשונה מועתקות ממנו השורות לטאב החדש
 const EXTRA_SHEET = 'recipes-extra';
 const DEV_HEADERS = ['זמן בקשה', 'שם', 'קוד', 'מאושר', 'נראה לאחרונה', 'מזהה (מוצפן, לא לגעת)', 'תפקיד'];
 const DEV_APPROVED = 4, DEV_SEEN = 5, DEV_HASH = 6, DEV_ROLE = 7;
@@ -46,7 +50,7 @@ const SEEN_EVERY_S = 3600;        // "נראה לאחרונה" מתעדכן לכ
 function doGet(e) {
   try {
     const p = (e && e.parameter) || {};
-    if (p.a === 'data') return handleData(p.d);
+    if (p.a === 'recipes' || p.a === 'data') return handleData();
     if (p.a === 'stock') return handleStock(p.d);
   } catch (err) {
     return reply('error');
@@ -65,11 +69,11 @@ function doPost(e) {
     const proposed = clip(d.proposed, 5000).trim();
     const sender = clean(clip(d.sender, 60)).trim();
     if (!proposed || !Object.prototype.hasOwnProperty.call(FIELDS, field) || !sender) return reply('invalid');
-    const dev = lookupDevice(d.dev);
-    if (!dev || !dev.approved) return reply('denied');       // בקשות תיקון רק ממכשיר מאושר
+    // בקשת תיקון פתוחה לכל אחד (ספר המתכונים פתוח). היא נכנסת כ"ממתין" ולא משנה כלום עד שמאשרים אותה בגיליון.
+    const src = devKey(d.dev) || ('s' + sender.toLowerCase());   // מזהה אנונימי לצורך הגבלת קצב בלבד
 
     lock.waitLock(15000); locked = true;                     // הספירה והכתיבה מתבצעות תחת נעילה, כדי שבקשות מקבילות לא יעקפו את המגבלה
-    if (!rateOk(dev.key)) return reply('busy');          // המגבלה לפי המכשיר, לא לפי השם שהלקוח שולח
+    if (!rateOk(src)) return reply('busy');              // המגבלה לפי המזהה האנונימי, ואם אין, לפי שם השולח. יש גם תקרה כללית
     const recipes = SpreadsheetApp.getActive().getSheetByName(RECIPES_SHEET);
     const row = findRecipeRow(recipes, cat, title);
     if (!row) return reply('unknown');
@@ -82,7 +86,7 @@ function doPost(e) {
 
     const sh = requestsSheet();
     if (isDuplicate(sh, cat, title, field, proposed)) return reply('ok');
-    sh.appendRow([new Date(), cat, title, field, current, proposed, summarize(current, proposed), comment, sender + ' [' + clean(dev.name) + ']', ST.PENDING].map(safe));
+    sh.appendRow([new Date(), cat, title, field, current, proposed, summarize(current, proposed), comment, sender, ST.PENDING].map(safe));
     notify();
     return reply('ok');
   } catch (err) {
@@ -115,7 +119,19 @@ function devicesSheet() {
   sh.setFrozenRows(1);
   sh.getRange(1, 1, 1, DEV_HEADERS.length).setFontWeight('bold');
   sh.hideColumns(DEV_HASH);       // תיבות הסימון נוספות שורה-שורה: תיבות ריקות בעמודה שלמה נספרות כשורות עם תוכן ושוברות את getLastRow
+  migrateLegacyDevices(ss, sh);
   return sh;
+}
+
+/** יצירה ראשונה של טאב המכשירים של המלאי: מעתיקים אליו את המכשירים שכבר אושרו בטאב הישן, כדי שאף אחד לא יתבקש לאשר שוב. הטאב הישן לא משתנה. */
+function migrateLegacyDevices(ss, sh) {
+  const old = ss.getSheetByName(LEGACY_DEVICES_SHEET);
+  if (!old || old.getLastRow() < 2) return;
+  const rows = old.getRange(2, 1, old.getLastRow() - 1, DEV_HEADERS.length).getValues().filter(r => r[DEV_HASH - 1]);
+  if (!rows.length) return;
+  sh.getRange(2, 1, rows.length, DEV_HEADERS.length).setValues(rows);
+  sh.getRange(2, DEV_APPROVED, rows.length, 1).insertCheckboxes();
+  sh.getRange(2, DEV_APPROVED, rows.length, 1).setValues(rows.map(r => [isTrue(r[DEV_APPROVED - 1])]));
 }
 
 /** מוצא מכשיר לפי המזהה שהלקוח שלח. מחזיר null אם המזהה לא תקין או לא קיים. */
@@ -150,13 +166,9 @@ function approvedDevice(id) {
   return { st, dev };
 }
 
-/** doGet?a=data&d=<מזהה>: מחזיר את המתכונים רק למכשיר מאושר. */
-function handleData(id) {
-  const r = approvedDevice(id);
-  if (!r.dev) return json(r.st);
-  r.st.csv = sheetCsv(RECIPES_SHEET);
-  r.st.extra = sheetCsv(EXTRA_SHEET);
-  return json(r.st);
+/** doGet?a=recipes (או a=data, לתאימות לגרסאות ישנות של האתר): ספר המתכונים פתוח, בלי אישור מכשיר ובלי בדיקת מזהה. */
+function handleData() {
+  return json({ status: 'ok', csv: sheetCsv(RECIPES_SHEET), extra: sheetCsv(EXTRA_SHEET) });
 }
 
 /** doGet?a=stock&d=<מזהה>: הגדרות המלאי של שלושת הפסים (CSV לכל פס) למכשיר מאושר. טאב חסר או שבור = מחרוזת ריקה, ו-errors מסביר. */
@@ -225,7 +237,7 @@ function handleRequest(d) {
     const at = lastDevice + 1;
     sh.getRange(at, 1, 1, DEV_HEADERS.length).setValues([[new Date(), name, "'" + devCode(key), false, '', key, ''].map(safe)]);
     sh.getRange(at, DEV_APPROVED).insertCheckboxes();
-    notify('מכשיר חדש מבקש גישה לספר המתכונים', name + ' (קוד ' + devCode(key) + ')\nלאישור: טאב "' + DEVICES_SHEET + '", וי בעמודת "מאושר"\n' + SpreadsheetApp.getActive().getUrl(), 'notified-dev');
+    notify('מכשיר חדש מבקש גישה לאפליקציית המלאי', name + ' (קוד ' + devCode(key) + ')\nלאישור: טאב "' + DEVICES_SHEET + '", וי בעמודת "מאושר"\n' + SpreadsheetApp.getActive().getUrl(), 'notified-dev');
     return json({ status: 'pending', name, code: devCode(key) });
   } finally {
     if (locked) { try { lock.releaseLock(); } catch (x) {} }

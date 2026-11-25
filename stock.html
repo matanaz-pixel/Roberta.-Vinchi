@@ -246,7 +246,7 @@
 <script src="./firebase-init.js"></script>
 <script>
 // ============ הגדרות ============
-// אותו Web App של ספר המתכונים: הגדרות המוצרים נקראות ממנו רק למכשיר מאושר (אותו אישור מכשיר, אותו מפתח במכשיר).
+// אותו Web App של הגיליון: הגדרות המוצרים נקראות ממנו רק למכשיר שאושר בטאב "מכשירי מלאי". ספר המתכונים פתוח ולא תלוי באישור הזה.
 const ACCESS_URL = 'https://script.google.com/macros/s/AKfycbyT2q5HDJJ77nzPrpd-FayB1Mq5piCG6kLpP9Kx1zq-h4dbEYZPtgNK5JYG4WXv9xSj/exec';
 const DEVICE_KEY = 'rb-device-v1', SENDER_KEY = 'rb-sender', PREP_KEY = 'rb-prep-v1';
 function prepVals(){ const d = store.get(PREP_KEY); return d && typeof d === 'object' ? d : {}; }
@@ -342,7 +342,7 @@ function showGate(acc){
   const err = t => { msg.textContent = t; msg.hidden = false; };
   const btn = (label, cls, fn) => { const b = el('button', cls, label); b.type = 'button'; b.onclick = fn; return b; };
   if(acc.status === 'unknown'){
-    box.append(el('h1', '', 'מלאי והכנות'), el('p', '', 'כדי לפתוח צריך אישור. אם כבר אושרתם בספר המתכונים מאותו מכשיר, האישור תקף גם כאן. אחרת כתבו את השם שלכם ולחצו על הבקשה.'));
+    box.append(el('h1', '', 'מלאי והכנות'), el('p', '', 'כדי לפתוח צריך אישור. כתבו את השם שלכם ולחצו על הבקשה, והיא תישלח למי שמאשר.'));
     const name = el('input'); name.type = 'text'; name.maxLength = 60; name.placeholder = 'השם שלך'; name.autocomplete = 'name'; name.setAttribute('aria-label', 'השם שלך');
     try{ name.value = localStorage.getItem(SENDER_KEY) || ''; }catch(e){}
     const hp = el('input', 'hp'); hp.type = 'text'; hp.id = 'gate-hp'; hp.tabIndex = -1; hp.autocomplete = 'off'; hp.setAttribute('aria-hidden', 'true');
