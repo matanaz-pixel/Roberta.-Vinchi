@@ -400,6 +400,23 @@ async def main():
             check('N2 touch targets at least 44px (history page)', not small, small)
             await ctx.close()
 
+            # ---------- ספר פתוח: בלי אישור מכשיר ובלי תלות באפליקציית המלאי ----------
+            ctx = await b.new_context(viewport={'width': 390, 'height': 844}, locale='he-IL', service_workers='block')
+            csv_open = 'קטגוריה,שם,מצרכים,הוראות הכנה,הערות\nפס קר,סחוג,עגבניות 1 ק"ג,טוחנים,'
+            urls = []
+            async def gs_open(route):
+                urls.append(route.request.url)
+                if route.request.method == 'POST': return await route.fulfill(status=200, body='ok')
+                await route.fulfill(status=200, body=json.dumps({'status': 'ok', 'csv': csv_open, 'extra': ''}), headers={'access-control-allow-origin': '*'})
+            await ctx.route('**/script.google.com/**', gs_open); await ctx.route('**/fonts.*/**', lambda r: r.abort())
+            pg = await new_page(ctx, errs)
+            await pg.goto(base + '/recipes.html'); await pg.wait_for_selector('.card')
+            check('O1 book opens with no approval screen', await pg.locator('#gate').count() == 0 and await pg.locator('.card').count() == 1)
+            check('O2 book requests recipes without any device id', bool(urls) and all('a=recipes' in u and 'd=' not in u for u in urls if 'script.google.com' in u), urls)
+            keys = await pg.evaluate("() => Object.keys(localStorage)")
+            check('O3 book does not use the stock app device key', 'rb-device-v1' not in keys, keys)
+            await ctx.close()
+
             # ---------- #q= בספר ----------
             ctx = await b.new_context(viewport={'width': 390, 'height': 844}, locale='he-IL', service_workers='block')
             csv_rec = 'קטגוריה,שם,מצרכים,הוראות הכנה,הערות\nפס חם,קרם כרובית,"חמאה 400 גרם\nכרובית 2 ק""ג",מבשלים,\nפס קר,סחוג,עגבניות 1 ק"ג,טוחנים,'

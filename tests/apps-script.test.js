@@ -53,7 +53,7 @@ function makeEnv(){
   const post = body => ctx.doPost({ postData: { contents: JSON.stringify(body) } });
   const get = params => ctx.doGet({ parameter: params });
   const j = s => JSON.parse(s);
-  const devices = () => sheets['מכשירים'];
+  const devices = () => sheets['מכשירי מלאי'];
   const approveAll = () => devices().rows.slice(1).forEach(r => { r[3] = true; });
   return { ctx, post, get, j, sheets, cache, mails, devices, approveAll, requests: () => sheets['בקשות תיקון'] };
 }
@@ -76,12 +76,16 @@ test('accepts a valid request from an approved device and records server-side cu
   assert.strictEqual(rows[1][4], '1 ק"ג עגבניות');
   assert.match(rows[1][7], /הגיליון השתנה/);
 });
-test('correction from unapproved or unknown device is denied and writes nothing', () => {
+test('correction needs no device approval: anyone can send, it waits as pending and nothing in the recipes changes', () => {
   const env = makeEnv();
-  assert.strictEqual(env.post(base), 'denied');                          // מכשיר לא מוכר
-  env.post({ a: 'request', dev: ID, name: 'דני' });
-  assert.strictEqual(env.post(base), 'denied');                          // ממתין
-  assert.strictEqual(env.requests(), undefined);
+  assert.strictEqual(env.post(base), 'ok');                              // מכשיר לא מוכר
+  assert.strictEqual(env.post({ ...base, dev: undefined, proposed: 'אחר' }), 'ok');   // בלי מזהה בכלל
+  const rows = env.requests().rows;
+  assert.strictEqual(rows.length, 3);
+  assert.strictEqual(rows[1][9], 'ממתין');
+  assert.strictEqual(rows[1][8], 'דני');                                 // השולח כפי שנכתב, בלי שם מכשיר
+  assert.strictEqual(env.sheets['recipes'].rows[1][2], '1 ק"ג עגבניות');
+  assert.strictEqual(env.devices(), undefined);                          // לא נוצר טאב מכשירים
 });
 test('sender is required', () => {
   const env = approved();
@@ -115,15 +119,15 @@ test('unknown recipe is rejected', () => {
 });
 
 // ---- אישור מכשירים ----
-test('new device: unknown until it asks, then pending, and no data is leaked', () => {
-  const env = makeEnv();
-  assert.deepStrictEqual(env.j(env.get({ a: 'data', d: ID })), { status: 'unknown' });
+test('new device: unknown until it asks, then pending, and no stock data is leaked', () => {
+  const env = withStock(makeEnv());
+  assert.deepStrictEqual(env.j(env.get({ a: 'stock', d: ID })), { status: 'unknown' });
   const r = env.j(env.post({ a: 'request', dev: ID, name: 'דני' }));
   assert.strictEqual(r.status, 'pending');
   assert.match(r.code, /^[0-9A-F]{4}$/);
-  const g = env.j(env.get({ a: 'data', d: ID }));
+  const g = env.j(env.get({ a: 'stock', d: ID }));
   assert.strictEqual(g.status, 'pending');
-  assert.strictEqual(g.csv, undefined);
+  assert.strictEqual(g.stations, undefined);
 });
 test('request is stored with a hash of the id, never the id itself, and a checkbox column', () => {
   const env = makeEnv();
@@ -136,32 +140,34 @@ test('request is stored with a hash of the id, never the id itself, and a checkb
   assert.deepStrictEqual(env.devices().checkboxCols, [4]);
   assert.deepStrictEqual(env.devices().hidden, [6]);
 });
-test('approving a device (checkbox) opens the book, and it returns recipes as CSV', () => {
+test('the recipe book is open: no device, any id or none, always returns recipes as CSV', () => {
   const env = makeEnv();
-  env.post({ a: 'request', dev: ID, name: 'דני' });
-  env.devices().rows[1][3] = true;
-  const g = env.j(env.get({ a: 'data', d: ID }));
+  for(const q of [{ a: 'recipes' }, { a: 'data' }, { a: 'data', d: ID }, { a: 'recipes', d: "' OR 1" }]){
+    const g0 = env.j(env.get(q));
+    assert.strictEqual(g0.status, 'ok');
+    assert.match(g0.csv, /^קטגוריה,שם,מצרכים,הוראות הכנה,הערות\n/);
+  }
+  assert.strictEqual(env.devices(), undefined);                              // קריאה לספר לא יוצרת ולא כותבת כלום בטאב המכשירים
+  const g = env.j(env.get({ a: 'recipes' }));
   assert.strictEqual(g.status, 'ok');
   assert.match(g.csv, /^קטגוריה,שם,מצרכים,הוראות הכנה,הערות\n/);
   assert.ok(g.csv.includes('"מבשלים,\nומערבבים"'));                          // ציטוט נכון של פסיק ושורה חדשה
   assert.strictEqual(g.extra, '');                                          // אין טאב recipes-extra
 });
-test('recipes-extra tab is served only to approved devices', () => {
+test('recipes-extra tab is served with the open book', () => {
   const env = makeEnv();
   env.sheets['recipes-extra'] = new Sheet([['קטגוריה', 'שם'], ['קונדיטוריה', 'עוגה']]);
-  env.post({ a: 'request', dev: ID, name: 'דני' });
-  assert.strictEqual(env.j(env.get({ a: 'data', d: ID })).extra, undefined);
-  env.approveAll();
-  assert.match(env.j(env.get({ a: 'data', d: ID })).extra, /עוגה/);
+  assert.match(env.j(env.get({ a: 'recipes' })).extra, /עוגה/);
 });
-test('unchecking the box blocks the device after it has been seen', () => {
-  const env = approved();
-  env.get({ a: 'data', d: ID });                                            // נראה לראשונה
+test('unchecking the box blocks the device from the stock app only, the book stays open and corrections still work', () => {
+  const env = withStock(approved());
+  env.get({ a: 'stock', d: ID });                                           // נראה לראשונה
   env.devices().rows[1][3] = false;
-  const g = env.j(env.get({ a: 'data', d: ID }));
+  const g = env.j(env.get({ a: 'stock', d: ID }));
   assert.strictEqual(g.status, 'blocked');
-  assert.strictEqual(g.csv, undefined);
-  assert.strictEqual(env.post({ ...base }), 'denied');                      // וגם לא יכול לשלוח תיקונים
+  assert.strictEqual(g.stations, undefined);
+  assert.strictEqual(env.j(env.get({ a: 'recipes' })).status, 'ok');
+  assert.strictEqual(env.post({ ...base }), 'ok');
 });
 test('asking again does not create duplicate rows, and an other device is separate', () => {
   const env = makeEnv();
@@ -170,7 +176,7 @@ test('asking again does not create duplicate rows, and an other device is separa
   assert.strictEqual(env.devices().rows.length, 2);
   env.post({ a: 'request', dev: ID2, name: 'דנה' });
   assert.strictEqual(env.devices().rows.length, 3);
-  assert.strictEqual(env.j(env.get({ a: 'data', d: ID2 })).status, 'pending');
+  assert.strictEqual(env.j(env.get({ a: 'stock', d: ID2 })).status, 'pending');
 });
 test('malformed ids and empty names are rejected', () => {
   const env = makeEnv();
@@ -178,7 +184,7 @@ test('malformed ids and empty names are rejected', () => {
   assert.strictEqual(env.post({ a: 'request', dev: ID, name: '   ' }), 'invalid');
   assert.strictEqual(env.post({ a: 'request', dev: ID.toUpperCase(), name: 'דני' }), 'invalid');
   assert.strictEqual(env.devices(), undefined);
-  assert.deepStrictEqual(env.j(env.get({ a: 'data', d: "' OR 1" })), { status: 'unknown' });
+  assert.deepStrictEqual(env.j(env.get({ a: 'stock', d: "' OR 1" })), { status: 'unknown' });
 });
 test('device requests are rate limited globally and capped when too many are pending', () => {
   const env = makeEnv();
@@ -225,7 +231,7 @@ test('stock: pending and blocked devices get status only, nothing from the stock
   assert.strictEqual(g.status, 'pending');
   assert.strictEqual(g.stations, undefined);
   assert.ok(!JSON.stringify(g).includes('סחוג'));
-  env.approveAll(); env.get({ a: 'data', d: ID });                        // נראה
+  env.approveAll(); env.get({ a: 'stock', d: ID });                      // נראה
   env.devices().rows[1][3] = false;
   g = env.j(env.get({ a: 'stock', d: ID }));
   assert.strictEqual(g.status, 'blocked');
@@ -308,9 +314,9 @@ test('regression: a sheet that already has 999 empty checkbox rows still works a
   sh.getRange(3, 4, 998, 1).insertCheckboxes();                             // מצב ישן: תיבות סימון על כל העמודה
   assert.strictEqual(env.j(env.post({ a: 'request', dev: ID2, name: 'דנה' })).status, 'pending');
   assert.strictEqual(sh.rows[2][1], 'דנה');                                  // שורה 3, ולא שורה 1001
-  assert.strictEqual(env.j(env.get({ a: 'data', d: ID2 })).status, 'pending');
+  assert.strictEqual(env.j(env.get({ a: 'stock', d: ID2 })).status, 'pending');
   sh.rows[2][3] = true;
-  assert.strictEqual(env.j(env.get({ a: 'data', d: ID2 })).status, 'ok');
+  assert.strictEqual(env.j(env.get({ a: 'stock', d: ID2 })).status, 'ok');
 });
 
 test('stock lint: admin sees products whose recipe is not in the book; others never get the list', () => {
@@ -334,4 +340,22 @@ test('weekly report: missing counts, usage vs base, pending, lint', () => {
   assert.ok(txt.includes('לא נספר ביום: רביעי'), txt);
   assert.ok(txt.includes('סחוג: נצרך בממוצע 9') && txt.includes('כדאי להעלות'), txt);       // 1+9-1 = 9 מול בסיס 4
   assert.ok(txt.includes('בקשות תיקון שממתינות: 2') && txt.includes('חריף ← רוטב'), txt);
+});
+
+// ---- פיצול: ספר פתוח, מלאי עם טאב מכשירים משלו ----
+test('split: the first stock request creates the new devices tab and copies approved devices from the legacy tab, so nobody has to ask again', () => {
+  const env = withStock(makeEnv());
+  // מחשבים את הגיבוב כמו בשרת: מבקשים פעם אחת, ואז מעבירים את השורה לטאב הישן
+  env.post({ a: 'request', dev: ID, name: 'דני' });
+  const head = env.devices().rows[0].slice(), row = env.devices().rows[1].slice(); row[3] = true;
+  delete env.sheets['מכשירי מלאי'];
+  env.sheets['מכשירים'] = new Sheet([head, row, ['', 'ריק', '', true, '', '', '']]);   // שורה בלי מזהה לא מועתקת
+  const r = env.j(env.get({ a: 'stock', d: ID }));
+  assert.strictEqual(r.status, 'unknown');                                   // הטאב החדש עדיין לא נוצר (קריאה לא יוצרת)
+  env.post({ a: 'request', dev: ID2, name: 'דנה' });                         // בקשה ראשונה אחרי הפיצול יוצרת ומעתיקה
+  const rows = env.devices().rows;
+  assert.strictEqual(rows.length, 3);                                        // כותרת + דני שהועתק + דנה
+  assert.strictEqual(env.j(env.get({ a: 'stock', d: ID })).status, 'ok');    // דני לא צריך לאשר שוב
+  assert.strictEqual(env.j(env.get({ a: 'stock', d: ID2 })).status, 'pending');
+  assert.strictEqual(env.sheets['מכשירים'].rows.length, 3);                  // הטאב הישן לא נגע
 });
